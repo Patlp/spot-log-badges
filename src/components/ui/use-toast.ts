@@ -2,17 +2,19 @@
 import * as React from "react"
 import type {
   ToastActionElement,
-  ToastProps,
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 10
 const TOAST_REMOVE_DELAY = 1000000
 
-type ToasterToast = ToastProps & {
+type ToasterToastProps = {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  variant?: "default" | "destructive"
 }
 
 const actionTypes = {
@@ -34,11 +36,11 @@ type ActionType = typeof actionTypes
 type Action =
   | {
       type: ActionType["ADD_TOAST"]
-      toast: Omit<ToasterToast, "id"> & { id?: string }
+      toast: Omit<ToasterToastProps, "id"> & { id?: string }
     }
   | {
       type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast> & { id: string }
+      toast: Partial<ToasterToastProps> & { id: string }
     }
   | {
       type: ActionType["DISMISS_TOAST"]
@@ -50,7 +52,7 @@ type Action =
     }
 
 interface State {
-  toasts: ToasterToast[]
+  toasts: ToasterToastProps[]
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
@@ -62,7 +64,7 @@ const reducer = (state: State, action: Action): State => {
         ...state,
         toasts: [
           ...state.toasts,
-          { id: genId(), ...action.toast },
+          { id: action.toast.id || genId(), ...action.toast, open: true },
         ].slice(0, TOAST_LIMIT),
       }
 
@@ -123,20 +125,26 @@ function dispatch(action: Action) {
   })
 }
 
-// Define a more permissive type for the props that allows id
-type ToastProps = Omit<ToasterToast, "id"> & { id?: string }
+// Define the input props type for the toast function
+interface ToastProps {
+  id?: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+  variant?: "default" | "destructive"
+}
 
 // Define the return type of the toast function explicitly
 interface ToastReturn {
   id: string;
   dismiss: () => void;
-  update: (props: ToasterToast) => void;
+  update: (props: Partial<ToasterToastProps>) => void;
 }
 
 function toast(props: ToastProps): ToastReturn {
   const id = props.id || genId();
 
-  const update = (props: ToasterToast) =>
+  const update = (props: Partial<ToasterToastProps>) =>
     dispatch({
       type: actionTypes.UPDATE_TOAST,
       toast: { ...props, id },
