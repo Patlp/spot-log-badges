@@ -12,10 +12,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true
   },
   global: {
-    // Added for debugging
-    fetch: (...args) => {
-      console.log("Supabase fetch:", args[0]);
-      return fetch(...args);
+    // Added for debugging - fixed the TypeScript error with the spread operator
+    fetch: (url, options) => {
+      console.log("Supabase fetch:", url);
+      return fetch(url, options);
     },
   },
 });
