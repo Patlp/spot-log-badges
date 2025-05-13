@@ -108,7 +108,7 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in and process any badges or profile updates
+// Function to create a check-in - SIMPLIFIED with standard Supabase client
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
@@ -118,6 +118,7 @@ export const createCheckIn = async (checkInData: {
   notes?: string;
 }) => {
   try {
+    console.log("=== CREATING CHECK-IN (DIRECT IMPLEMENTATION) ===");
     console.log("Check-in started", { testData: checkInData });
     
     // Validate required fields
@@ -157,161 +158,8 @@ export const createCheckIn = async (checkInData: {
       throw new Error("No data returned from insert operation");
     }
     
-    // ---------- BADGE PROCESSING ----------
-    // After successful check-in, process badges
-    const checkIn = data[0];
-    console.log("Processing badges for check-in:", checkIn);
-    
-    let newBadge = null;
-    
-    try {
-      // Check if this is the user's first check-in at this venue
-      const { data: prevCheckIns, error: checkInError } = await supabase
-        .from("check_ins")
-        .select("*")
-        .eq("user_id", checkInData.user_id)
-        .eq("venue_name", checkInData.venue_name)
-        .neq("id", checkIn.id) // Exclude the current check-in
-        .limit(1);
-        
-      if (checkInError) {
-        console.error("Error checking previous check-ins:", checkInError);
-        // Continue processing even if this check fails
-      } else {
-        // If this is the first check-in at this venue, award a "first_visit" badge
-        if (!prevCheckIns || prevCheckIns.length === 0) {
-          console.log(`First visit to ${checkInData.venue_name}, awarding badge`);
-          const badgeData = {
-            user_id: checkInData.user_id,
-            venue_name: checkInData.venue_name,
-            badge_type: "first_visit",
-            icon: "map-pin",
-            earned_at: new Date().toISOString()
-          };
-          
-          const { data: badgeResult, error: badgeError } = await supabase
-            .from("badges")
-            .insert([badgeData])
-            .select();
-            
-          if (badgeError) {
-            console.error("Error awarding badge:", badgeError);
-          } else {
-            console.log("Badge awarded:", badgeResult);
-            if (badgeResult && badgeResult.length > 0) {
-              newBadge = badgeResult[0];
-            }
-          }
-        } else {
-          // Check if this is their 3rd+ check-in at this venue, award a "regular" badge
-          // First get the count of check-ins at this venue for this user
-          const { count, error: countError } = await supabase
-            .from("check_ins")
-            .select("*", { count: 'exact', head: true })
-            .eq("user_id", checkInData.user_id)
-            .eq("venue_name", checkInData.venue_name);
-            
-          console.log("Check-ins count result:", { count, error: countError });
-            
-          if (!countError && count && count >= 3) {
-            console.log(`User has ${count} check-ins at ${checkInData.venue_name}, checking for regular badge...`);
-            
-            // Check if they already have a regular badge for this venue - Fixed query with proper types
-            const { data: badgeData, error: badgeQueryError } = await supabase
-              .from("badges")
-              .select("*")
-              .eq("user_id", checkInData.user_id)
-              .eq("badge_type", "regular")
-              .eq("venue_name", checkInData.venue_name);
-              
-            console.log("Regular badge check result:", { existingBadges: badgeData, error: badgeQueryError });
-              
-            // Check if badge already exists
-            const badgeExists = badgeData && badgeData.length > 0;
-              
-            if (!badgeQueryError && !badgeExists) {
-              console.log(`Regular at ${checkInData.venue_name}, awarding badge`);
-              const badgeData = {
-                user_id: checkInData.user_id,
-                venue_name: checkInData.venue_name,
-                badge_type: "regular",
-                icon: "star",
-                earned_at: new Date().toISOString()
-              };
-              
-              const { data: badgeResult, error: badgeError } = await supabase
-                .from("badges")
-                .insert([badgeData])
-                .select();
-                
-              if (badgeError) {
-                console.error("Error awarding regular badge:", badgeError);
-              } else {
-                console.log("Regular badge awarded:", badgeResult);
-                if (badgeResult && badgeResult.length > 0) {
-                  newBadge = badgeResult[0];
-                }
-              }
-            }
-          }
-        }
-      }
-      
-      // ---------- UPDATE USER PROFILE ----------
-      // Get the user's unique venues
-      const { data: uniqueVenues, error: uniqueError } = await supabase
-        .from("check_ins")
-        .select("venue_name")
-        .eq("user_id", checkInData.user_id);
-      
-      if (uniqueError) {
-        console.error("Error getting unique venues:", uniqueError);
-      } else {
-        // Count unique venue names
-        const uniqueVenueNames = new Set();
-        uniqueVenues?.forEach(v => uniqueVenueNames.add(v.venue_name));
-        const uniqueVenueCount = uniqueVenueNames.size;
-        
-        // Get badge count
-        const { data: badgeCount, error: badgeCountError } = await supabase
-          .from("badges")
-          .select("id")
-          .eq("user_id", checkInData.user_id);
-          
-        if (badgeCountError) {
-          console.error("Error getting badge count:", badgeCountError);
-        } else {
-          // Update profile stats
-          const { error: profileUpdateError } = await supabase
-            .from("profiles")
-            .update({
-              total_check_ins: uniqueVenues ? uniqueVenues.length : 0,
-              unique_venues: uniqueVenueCount,
-              total_badges: badgeCount ? badgeCount.length : 0
-            })
-            .eq("id", checkInData.user_id);
-            
-          if (profileUpdateError) {
-            console.error("Error updating profile stats:", profileUpdateError);
-          } else {
-            console.log("Profile stats updated successfully");
-          }
-        }
-      }
-    } catch (processingError) {
-      console.error("Error in badge/profile processing:", processingError);
-      // We don't want to fail the check-in if badge processing fails
-      // Just log the error and continue
-    }
-    
-    // Return the check-in data with the badge if one was awarded
-    const result = {
-      ...checkIn,
-      newBadge
-    };
-    
-    console.log("Check-in completed successfully:", result);
-    return result;
+    console.log("Insert succeeded:", data);
+    return data[0];
     
   } catch (error: any) {
     console.error("Final createCheckIn error:", error);
