@@ -3,7 +3,7 @@ import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
 import { supabase, createCheckIn, VenueType } from "../lib/supabase";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,15 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { MapPin, Save, Clock, Loader2, MapIcon, LocateFixed, Search } from "lucide-react";
+import { MapPin, Save, Clock, Loader2, MapIcon, LocateFixed, Search, Building } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { getNearbyPlaces, mapGoogleTypeToVenueType } from "@/services/places";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card as CardComponent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Define the form validation schema using zod
 const checkInSchema = z.object({
@@ -54,6 +55,7 @@ const CheckInPage = () => {
   const [nearbyPlaces, setNearbyPlaces] = useState<PlaceOption[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PlaceOption | null>(null);
   const geolocation = useGeolocation();
+  const [activeTab, setActiveTab] = useState<string>("manual");
 
   // Get current date/time in ISO format for the default value
   const currentDateTime = new Date().toISOString().slice(0, 16);
@@ -106,12 +108,17 @@ const CheckInPage = () => {
   // Toggle location usage
   const handleToggleLocation = () => {
     setUseLocation(!useLocation);
-    if (!useLocation && geolocation.error) {
-      toast({
-        title: "Location Error",
-        description: geolocation.error,
-        variant: "destructive",
-      });
+    if (!useLocation) {
+      setActiveTab("nearby");
+      if (geolocation.error) {
+        toast({
+          title: "Location Error",
+          description: geolocation.error,
+          variant: "destructive",
+        });
+      }
+    } else {
+      setActiveTab("manual");
     }
   };
 
@@ -289,210 +296,302 @@ const CheckInPage = () => {
           </CardDescription>
         </CardHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent className="space-y-4">
-              {/* Location Toggle */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <LocateFixed className="h-5 w-5 mr-2 text-muted-foreground" />
-                  <span>Use my current location</span>
-                </div>
-                <Button
-                  type="button"
-                  variant={useLocation ? "default" : "outline"}
-                  size="sm"
-                  onClick={handleToggleLocation}
-                  disabled={geolocation.loading}
-                >
-                  {geolocation.loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : useLocation ? (
-                    "Enabled"
-                  ) : (
-                    "Disabled"
-                  )}
-                </Button>
+        <CardContent>
+          {/* Location Toggle Button */}
+          <div className="mb-8">
+            <Button
+              type="button"
+              variant={useLocation ? "default" : "outline"}
+              className="w-full"
+              onClick={handleToggleLocation}
+              disabled={geolocation.loading}
+            >
+              {geolocation.loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Finding your location...
+                </>
+              ) : useLocation ? (
+                <>
+                  <LocateFixed className="mr-2 h-4 w-4" />
+                  Using your location • Tap to disable
+                </>
+              ) : (
+                <>
+                  <LocateFixed className="mr-2 h-4 w-4" />
+                  Use my current location
+                </>
+              )}
+            </Button>
+
+            {/* Location Status */}
+            {useLocation && (
+              <div className="mt-2">
+                {geolocation.error ? (
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertTitle>Location Error</AlertTitle>
+                    <AlertDescription>{geolocation.error}</AlertDescription>
+                  </Alert>
+                ) : geolocation.loading ? (
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Getting your location...</span>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground mt-2">
+                    Location found at {geolocation.latitude.toFixed(4)}, {geolocation.longitude.toFixed(4)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Tabs for Manual or Nearby Places */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="manual">
+                <Building className="h-4 w-4 mr-2" />
+                Manual Entry
+              </TabsTrigger>
+              <TabsTrigger 
+                value="nearby" 
+                disabled={!useLocation || geolocation.loading || !!geolocation.error}
+              >
+                <MapPin className="h-4 w-4 mr-2" />
+                Nearby Places
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Manual Entry Tab */}
+            <TabsContent value="manual" className="pt-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  {/* Venue Name */}
+                  <FormField
+                    control={form.control}
+                    name="venue_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Venue Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Cloudtop Bar" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Venue Type */}
+                  <FormField
+                    control={form.control}
+                    name="venue_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Venue Type</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select venue type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Restaurant">Restaurant</SelectItem>
+                            <SelectItem value="Bar">Bar</SelectItem>
+                            <SelectItem value="Club">Club</SelectItem>
+                            <SelectItem value="Event">Event</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Location */}
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. New York, NY" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Date/Time */}
+                  <FormField
+                    control={form.control}
+                    name="check_in_time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date & Time</FormLabel>
+                        <FormControl>
+                          <Input type="datetime-local" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Notes */}
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes (optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="How was it? Add any thoughts or vibes here..."
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Checking In...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="mr-2 h-4 w-4" />
+                        Check In
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+
+            {/* Nearby Places Tab */}
+            <TabsContent value="nearby" className="pt-4">
+              <div className="mb-4">
+                <h3 className="text-lg font-medium mb-3">Select a place to check in</h3>
+              
+                {isLoadingPlaces ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                ) : nearbyPlaces.length === 0 ? (
+                  <Alert>
+                    <AlertTitle>No places found</AlertTitle>
+                    <AlertDescription>
+                      No places found nearby. Try expanding the search area or enter venue details manually.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="grid gap-2 max-h-64 overflow-y-auto">
+                    {nearbyPlaces.map((place) => (
+                      <CardComponent 
+                        key={place.place_id}
+                        className={`cursor-pointer p-3 transition ${selectedPlace?.place_id === place.place_id ? 'border-2 border-primary ring-1 ring-primary' : 'hover:border-primary/50'}`}
+                        onClick={() => handleSelectPlace(place)}
+                      >
+                        <div className="flex justify-between">
+                          <div>
+                            <h4 className="font-medium">{place.name}</h4>
+                            <p className="text-sm text-muted-foreground">{place.address}</p>
+                          </div>
+                          <Badge>{mapGoogleTypeToVenueType(place.types)}</Badge>
+                        </div>
+                      </CardComponent>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Location Status */}
-              {useLocation && (
-                <div className="mb-4">
-                  {geolocation.error ? (
-                    <Alert variant="destructive">
-                      <AlertDescription>{geolocation.error}</AlertDescription>
-                    </Alert>
-                  ) : geolocation.loading ? (
-                    <div className="flex items-center space-x-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Getting your location...</span>
+              {selectedPlace && (
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 border-t pt-4 mt-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-medium">{selectedPlace.name}</h3>
+                        <p className="text-sm text-muted-foreground">{selectedPlace.address}</p>
+                      </div>
+                      <Badge>{mapGoogleTypeToVenueType(selectedPlace.types)}</Badge>
                     </div>
-                  ) : (
-                    <Alert>
-                      <AlertDescription>
-                        Location found! Coordinates: {geolocation.latitude.toFixed(4)}, {geolocation.longitude.toFixed(4)}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              )}
 
-              {/* Nearby Places */}
-              {useLocation && !geolocation.loading && !geolocation.error && (
-                <div className="mb-4">
-                  <h3 className="text-lg font-medium mb-2">Nearby Places</h3>
-                  {isLoadingPlaces ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-20 w-full" />
-                      <Skeleton className="h-20 w-full" />
-                      <Skeleton className="h-20 w-full" />
-                    </div>
-                  ) : nearbyPlaces.length === 0 ? (
-                    <Alert>
-                      <AlertDescription>
-                        No places found nearby. Try expanding the search area or enter venue details manually.
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                    <div className="grid gap-2 max-h-64 overflow-y-auto">
-                      {nearbyPlaces.map((place) => (
-                        <CardComponent 
-                          key={place.place_id}
-                          className={`cursor-pointer p-3 ${selectedPlace?.place_id === place.place_id ? 'border-2 border-primary' : ''}`}
-                          onClick={() => handleSelectPlace(place)}
-                        >
-                          <div className="flex justify-between">
-                            <div>
-                              <h4 className="font-medium">{place.name}</h4>
-                              <p className="text-sm text-muted-foreground">{place.address}</p>
-                            </div>
-                            <Badge>{mapGoogleTypeToVenueType(place.types)}</Badge>
-                          </div>
-                        </CardComponent>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                    {/* Date/Time for selected place */}
+                    <FormField
+                      control={form.control}
+                      name="check_in_time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date & Time</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              {/* Venue Name */}
-              <FormField
-                control={form.control}
-                name="venue_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Venue Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Cloudtop Bar" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    {/* Notes for selected place */}
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes (optional)</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="How was it? Add any thoughts or vibes here..."
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              {/* Venue Type */}
-              <FormField
-                control={form.control}
-                name="venue_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Venue Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full"
                     >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select venue type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Restaurant">Restaurant</SelectItem>
-                        <SelectItem value="Bar">Bar</SelectItem>
-                        <SelectItem value="Club">Club</SelectItem>
-                        <SelectItem value="Event">Event</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Location */}
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. New York, NY" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Date/Time */}
-              <FormField
-                control={form.control}
-                name="check_in_time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date & Time</FormLabel>
-                    <FormControl>
-                      <Input type="datetime-local" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Notes */}
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes (optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="How was it? Add any thoughts or vibes here..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-
-            <CardFooter>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Checking In...
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="mr-2 h-4 w-4" />
-                    Check In
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Checking In at {selectedPlace.name}...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="mr-2 h-4 w-4" />
+                          Check In at {selectedPlace.name}
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              )}
+              
+              {!selectedPlace && !isLoadingPlaces && nearbyPlaces.length > 0 && (
+                <div className="text-center text-muted-foreground">
+                  Please select a place from the list above to check in
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
       </Card>
     </div>
   );
