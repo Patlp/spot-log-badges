@@ -133,7 +133,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       console.log("[useCheckIn] Success - navigation disabled for testing");
       // navigate("/profile");
     },
-    onError: (error: any) => {
+    onError: (error: any) => { // Fixed: explicitly typing the error as any
       console.log("[useCheckIn] Mutation failed:", error);
       
       // Reset submission state immediately on error
