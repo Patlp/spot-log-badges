@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -174,11 +173,11 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in - Fixed type issue with venue_type
+// Function to create a check-in - Fixed type issue with venue_type and added improved logging
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
-  venue_type: string; // Accept string as input
+  venue_type: string;
   location: string;
   check_in_time: string;
   notes?: string;
@@ -201,21 +200,21 @@ export const createCheckIn = async (checkInData: {
     }
     
     // Create a clean payload with only the needed fields
-    const payload = {
+    const testData = {
       user_id: checkInData.user_id,
       venue_name: checkInData.venue_name,
-      venue_type: checkInData.venue_type, // Don't cast here, just pass the string after validation
+      venue_type: checkInData.venue_type,
       location: checkInData.location,
       check_in_time: checkInData.check_in_time,
       notes: checkInData.notes || null,
     };
     
-    console.log("Using payload:", JSON.stringify(payload, null, 2));
+    console.log("Check-in started", { testData });
     
-    // Insert with proper error handling
+    // Insert with proper error handling using the exact structure requested
     const { data, error } = await supabase
       .from("check_ins")
-      .insert([payload])
+      .insert([testData])
       .select();
     
     console.log("Insert result:", { data, error });

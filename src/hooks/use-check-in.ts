@@ -48,7 +48,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         const checkInData = {
           user_id: userId,
           venue_name: data.venue_name,
-          venue_type: data.venue_type, // Pass as string, validation happens in createCheckIn
+          venue_type: data.venue_type, 
           location: data.location,
           check_in_time: data.check_in_time,
           notes: data.notes || "",
@@ -126,7 +126,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       // Set the error state
       setCheckInError(error.message || "Unknown error occurred");
       
-      // Show error toast
+      // Show error toast with detailed error message
       toast({
         title: "Check-in Failed",
         description: `Error: ${error.message || "Unknown error occurred"}`,
