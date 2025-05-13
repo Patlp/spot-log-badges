@@ -14,32 +14,53 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     persistSession: true
   },
-  global: {
-    // Fixed TypeScript error by properly typing the fetch parameters
-    fetch: (url: RequestInfo | URL, options?: RequestInit) => {
-      console.log("Supabase fetch from client.ts:", url, options);
-      
-      // Add detailed logging for debugging
-      if (typeof url === 'string' && url.includes('check_ins')) {
-        console.log("DETECTED CHECK-IN REQUEST:", {
-          method: options?.method || 'GET',
-          headers: options?.headers ? 'Present' : 'None',
-          body: options?.body ? JSON.parse(options.body.toString()) : 'None'
-        });
-      }
-      
-      // Add logging for request completion
-      return fetch(url, options).then(response => {
-        console.log(`Supabase fetch response for ${url}:`, {
-          status: response.status,
-          ok: response.ok,
-          statusText: response.statusText
-        });
-        return response;
-      }).catch(error => {
-        console.error(`Supabase fetch error for ${url}:`, error);
-        throw error;
-      });
-    },
-  },
 });
+
+// Export an instrumented version of supabase with better logging
+// It wraps the original client but adds extensive logging
+export const debugSupabase = {
+  // Wrap the from method to add instrumentation
+  from: (table: string) => {
+    console.log(`DEBUG: Creating query for table "${table}"`);
+    const query = supabase.from(table);
+    
+    // Enhanced insert method with better error handling
+    const originalInsert = query.insert;
+    query.insert = function(values: any, options?: any) {
+      console.log(`DEBUG: Inserting into "${table}" with payload:`, JSON.stringify(values, null, 2));
+      
+      // Call the original method but with enhanced promise handling
+      const result = originalInsert.call(this, values, options);
+      
+      // Ensure we're correctly handling the promise resolution
+      const enhancedResult = {
+        ...result,
+        then: function(onfulfilled: any, onrejected: any) {
+          console.log(`DEBUG: Setting up promise handlers for "${table}" insert`);
+          return result.then(
+            (data) => {
+              console.log(`DEBUG: Insert into "${table}" resolved with:`, data);
+              return onfulfilled ? onfulfilled(data) : data;
+            },
+            (error) => {
+              console.error(`DEBUG: Insert into "${table}" rejected with:`, error);
+              return onrejected ? onrejected(error) : Promise.reject(error);
+            }
+          );
+        },
+        catch: function(onrejected: any) {
+          console.log(`DEBUG: Setting up error handler for "${table}" insert`);
+          return result.catch((error) => {
+            console.error(`DEBUG: Insert into "${table}" caught error:`, error);
+            return onrejected ? onrejected(error) : Promise.reject(error);
+          });
+        }
+      };
+      
+      return enhancedResult;
+    };
+    
+    return query;
+  },
+  auth: supabase.auth
+};

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,8 +58,8 @@ export function PlaceDetails({
           
           toast({
             title: "Check-in Taking Too Long",
-            description: "The check-in is taking longer than expected. It may still complete in the background.",
-            variant: "default"
+            description: "The check-in is taking longer than expected. Please try again.",
+            variant: "warning"
           });
         }
       }, 8000); // 8 second timeout
@@ -79,47 +78,27 @@ export function PlaceDetails({
     }
     
     setSubmissionAttempts(prev => prev + 1);
-    setDebugInfo(`Starting submission attempt #${submissionAttempts + 1} with values: ${JSON.stringify(values)}`);
+    setDebugInfo(`Starting submission attempt #${submissionAttempts + 1}`);
     
     console.log("PlaceDetails: Handling form submission with values:", values);
     setLocalSubmitting(true);
     
     try {
-      console.log("PlaceDetails: Calling onSubmit with:");
-      console.log("- Values:", values);
-      console.log("- Selected Place:", selectedPlace);
+      console.log("PlaceDetails: Calling onSubmit");
       onSubmit(values);
       
       // If submission hasn't set isSubmitting to true within 500ms, something might be wrong
       setTimeout(() => {
         if (localSubmitting && !isSubmitting) {
-          console.log("Submission did not start properly, showing error toast");
+          console.log("Submission did not start properly");
           setLocalSubmitting(false);
           setDebugInfo("ERROR: Submission did not properly start after 500ms");
           
-          // After multiple attempts, offer navigation option
-          if (submissionAttempts > 2) {
-            toast({
-              title: "Having Trouble Checking In?",
-              description: "Your check-in may have been processed. Try checking your profile?",
-              variant: "destructive",
-              action: (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate('/profile')}
-                >
-                  Go to Profile
-                </Button>
-              )
-            });
-          } else {
-            toast({
-              title: "Check-in Issue",
-              description: "There was a problem processing your check-in. Please try again.",
-              variant: "destructive"
-            });
-          }
+          toast({
+            title: "Check-in Issue",
+            description: "There was a problem starting your check-in. Please try again.",
+            variant: "destructive"
+          });
         }
       }, 500);
     } catch (error) {
@@ -129,7 +108,7 @@ export function PlaceDetails({
       
       toast({
         title: "Check-in Failed",
-        description: "There was a problem processing your check-in. Please try again.",
+        description: "There was an unexpected error. Please try again.",
         variant: "destructive"
       });
     }
