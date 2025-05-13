@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createCheckIn, VenueType, saveVenue } from "@/lib/supabase";
+import { createCheckIn } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 import { CheckInFormValues } from "@/components/check-in/ManualCheckInForm";
 import { Place } from "@/components/check-in/PlacesList";
@@ -43,45 +43,27 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           throw new Error("User ID is required for check-in");
         }
         
-        // Create the check-in data - making sure venue_type is properly passed as a string
-        // The validation to confirm it's a valid VenueType happens in createCheckIn
+        // Create the check-in data
         const checkInData = {
           user_id: userId,
           venue_name: data.venue_name,
-          venue_type: data.venue_type, 
+          venue_type: data.venue_type,
           location: data.location,
           check_in_time: data.check_in_time,
           notes: data.notes || "",
         };
         
-        // Try to save venue if available
-        if (selectedPlace) {
-          console.log("[useCheckIn] Saving venue data:", selectedPlace);
-          try {
-            await saveVenue({
-              place_id: selectedPlace.place_id,
-              name: selectedPlace.name,
-              address: selectedPlace.address,
-              types: selectedPlace.types,
-              latitude: selectedPlace.latitude,
-              longitude: selectedPlace.longitude,
-            });
-            console.log("[useCheckIn] Venue saved successfully");
-          } catch (venueError) {
-            console.error("[useCheckIn] Venue storage error:", venueError);
-            // Continue with check-in even if venue storage fails
-          }
-        }
+        console.log("[useCheckIn] Check-in data prepared:", checkInData);
         
-        // Create the check-in
-        console.log("[useCheckIn] Creating check-in with data:", checkInData);
-        
+        // Create the check-in directly without wrappers
+        console.log("[useCheckIn] Calling createCheckIn function");
         const checkInResult = await createCheckIn(checkInData);
         console.log("[useCheckIn] Check-in created successfully:", checkInResult);
+        
         return { success: true, data: checkInResult };
       } catch (error: any) {
         console.error("[useCheckIn] Check-in process error:", error);
-        throw error;
+        throw error; // Rethrow for the mutation error handler
       }
     },
     onMutate: () => {
@@ -96,14 +78,14 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       
-      // IMPORTANT: First show toast and THEN reset state before navigation
+      // Show toast
       toast({
         title: "Check-in Successful!",
         description: "Your check-in has been recorded.",
         duration: 3000,
       });
       
-      // Reset the submission state BEFORE navigation
+      // Reset the submission state
       setIsSubmitting(false);
       
       // Call the success callback if provided
@@ -112,7 +94,6 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       }
 
       // Use a small delay before navigation to ensure toast is visible
-      // and state updates have been processed
       setTimeout(() => {
         navigateToProfile();
       }, 500);

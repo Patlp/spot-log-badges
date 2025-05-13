@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -173,18 +174,18 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in - Fixed type issue with venue_type and added improved logging
+// Function to create a check-in - Fixed type issue and improved logging
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
-  venue_type: string;
+  venue_type: string;  // Changed from VenueType to string and validated inside
   location: string;
   check_in_time: string;
   notes?: string;
 }) => {
   try {
-    console.log("=== CREATING CHECK-IN (IMPROVED IMPLEMENTATION) ===");
-    console.log("Check-in started", checkInData);
+    console.log("=== CREATING CHECK-IN (SIMPLIFIED) ===");
+    console.log("Check-in started");
     
     // Validate required fields
     if (!checkInData.user_id) throw new Error("Missing user_id");
@@ -209,7 +210,7 @@ export const createCheckIn = async (checkInData: {
       notes: checkInData.notes || null,
     };
     
-    console.log("Check-in started", { testData });
+    console.log("Check-in data prepared:", testData);
     
     // Insert with proper error handling using the exact structure requested
     const { data, error } = await supabase
@@ -229,7 +230,7 @@ export const createCheckIn = async (checkInData: {
       throw new Error("No data returned from insert operation");
     }
     
-    console.log("Insert succeeded:", data);
+    console.log("Check-in finished successfully:", data);
     
     // Also update the user's check-in count in the profile
     try {
