@@ -1,5 +1,5 @@
 
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../App";
 import { supabase, getAllCheckIns } from "../lib/supabase";
@@ -16,20 +16,22 @@ const HomePage = () => {
   const { user } = useContext(AuthContext);
   const [welcomeMessage, setWelcomeMessage] = useState("");
 
-  useEffect(() => {
-    const getWelcomeMessage = () => {
-      const hour = new Date().getHours();
-      if (hour < 12) return "Good morning";
-      if (hour < 18) return "Good afternoon";
-      return "Good evening";
-    };
-
-    setWelcomeMessage(getWelcomeMessage());
+  // Use useCallback to prevent recreation of this function on every render
+  const getWelcomeMessage = useCallback(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   }, []);
+
+  useEffect(() => {
+    setWelcomeMessage(getWelcomeMessage());
+  }, [getWelcomeMessage]);
 
   const { data: checkIns, isLoading } = useQuery({
     queryKey: ["allCheckIns"],
-    queryFn: () => getAllCheckIns(20)
+    queryFn: () => getAllCheckIns(20),
+    staleTime: 60000, // Add staleTime to reduce frequent refetches
   });
 
   // Get a user's initials for the avatar fallback
@@ -118,47 +120,47 @@ const HomePage = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {checkIns && checkIns.map((checkIn: any) => (
-              <Card key={checkIn.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between">
-                    <div className="flex items-center space-x-4">
-                      <Avatar>
-                        <AvatarImage src={checkIn.profiles?.avatar_url || ''} />
-                        <AvatarFallback>{getInitials(checkIn.profiles?.username)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <Link to={`/profile/${checkIn.user_id}`} className="font-medium hover:underline">
-                          {checkIn.profiles?.username || 'Anonymous'}
-                        </Link>
-                        <p className="text-sm text-gray-500">
-                          checked in at {checkIn.venue_name}
-                        </p>
+            {checkIns && checkIns.length > 0 ? (
+              checkIns.map((checkIn: any) => (
+                <Card key={checkIn.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between">
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          <AvatarImage src={checkIn.profiles?.avatar_url || ''} />
+                          <AvatarFallback>{getInitials(checkIn.profiles?.username)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <Link to={`/profile/${checkIn.user_id}`} className="font-medium hover:underline">
+                            {checkIn.profiles?.username || 'Anonymous'}
+                          </Link>
+                          <p className="text-sm text-gray-500">
+                            checked in at {checkIn.venue_name}
+                          </p>
+                        </div>
                       </div>
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Award className="h-3 w-3" />
+                        {checkIn.venue_type}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <Award className="h-3 w-3" />
-                      {checkIn.venue_type}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-4">
-                  <div className="flex items-center text-sm text-muted-foreground mb-2">
-                    <MapPin className="mr-1 h-4 w-4" />
-                    <span>{checkIn.location}</span>
-                  </div>
-                  {checkIn.notes && <p className="text-sm mt-1">{checkIn.notes}</p>}
-                </CardContent>
-                <CardFooter className="pt-0 text-xs text-muted-foreground border-t">
-                  <div className="flex items-center">
-                    <Clock className="mr-1 h-3 w-3" />
-                    <span>{formatTimeAgo(checkIn.check_in_time)}</span>
-                  </div>
-                </CardFooter>
-              </Card>
-            ))}
-
-            {checkIns && checkIns.length === 0 && (
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="flex items-center text-sm text-muted-foreground mb-2">
+                      <MapPin className="mr-1 h-4 w-4" />
+                      <span>{checkIn.location}</span>
+                    </div>
+                    {checkIn.notes && <p className="text-sm mt-1">{checkIn.notes}</p>}
+                  </CardContent>
+                  <CardFooter className="pt-0 text-xs text-muted-foreground border-t">
+                    <div className="flex items-center">
+                      <Clock className="mr-1 h-3 w-3" />
+                      <span>{formatTimeAgo(checkIn.check_in_time)}</span>
+                    </div>
+                  </CardFooter>
+                </Card>
+              ))
+            ) : (
               <Card>
                 <CardContent className="py-8">
                   <div className="text-center">

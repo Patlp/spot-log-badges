@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect, createContext } from "react";
+import { useState, useEffect, createContext, useMemo } from "react";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
@@ -26,7 +26,15 @@ export const AuthContext = createContext<{
   signOut: async () => {},
 });
 
-const queryClient = new QueryClient();
+// Configure React Query with default settings to prevent excessive renders
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60000, // 1 minute
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -58,9 +66,16 @@ const App = () => {
     await supabase.auth.signOut();
   };
 
+  // Use useMemo for the context value to prevent unnecessary re-renders
+  const authContextValue = useMemo(() => ({
+    user,
+    loading,
+    signOut
+  }), [user, loading]);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthContext.Provider value={{ user, loading, signOut }}>
+      <AuthContext.Provider value={authContextValue}>
         <TooltipProvider>
           <Toaster />
           <Sonner />
