@@ -76,7 +76,7 @@ export function LocationDetector({
               <>
                 <p>For iPad/Safari users:</p>
                 <ol className="list-decimal ml-5 mt-1 space-y-1">
-                  <li>Check that your iPad location services are on in Settings > Privacy > Location Services</li>
+                  <li>Check that your iPad location services are on in Settings {'>'} Privacy {'>'} Location Services</li>
                   <li>In Safari, tap "AA" in the address bar</li>
                   <li>Select "Website Settings"</li>
                   <li>Verify "Location" is set to "Allow"</li>
