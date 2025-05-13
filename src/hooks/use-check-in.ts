@@ -28,6 +28,8 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       selectedPlace: Place | null 
     }) => {
       console.log("Starting check-in process with data:", data);
+      console.log("User ID:", userId);
+      console.log("Selected Place:", selectedPlace);
       
       if (!userId) {
         throw new Error("User ID is required for check-in");
@@ -44,9 +46,12 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           notes: data.notes || "",
         };
         
+        // Log right before saving venue
+        console.log("About to store venue data (if available)");
+        
         if (selectedPlace) {
           // Store the venue in our venues table for future reference
-          console.log("Saving venue data:", selectedPlace);
+          console.log("Saving venue data with details:", selectedPlace);
           try {
             await saveVenue({
               place_id: selectedPlace.place_id,
@@ -56,16 +61,24 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
               latitude: selectedPlace.latitude,
               longitude: selectedPlace.longitude,
             });
+            console.log("Venue saved successfully");
           } catch (venueError) {
             console.error("Venue storage error (non-critical):", venueError);
             // Continue with check-in even if venue storage fails
           }
         }
         
-        console.log("Creating check-in with data:", checkInData);
-        const checkInResult = await createCheckIn(checkInData);
-        console.log("Check-in created:", checkInResult);
+        // Log right before creating check-in
+        console.log("About to create check-in with data:", checkInData);
         
+        // STEP 3: Ensure the insert is being awaited properly
+        console.log("Awaiting createCheckIn...");
+        const checkInResult = await createCheckIn(checkInData);
+        console.log("Check-in created successfully:", checkInResult);
+        
+        // TEMPORARILY COMMENT OUT badge awarding and profile stats for testing
+        console.log("DEBUGGING: Skipping badge and profile updates for now");
+        /*
         // Check if it's a first visit to this venue
         const { data: existingCheckins, error: checkError } = await supabase
           .from("check_ins")
@@ -145,10 +158,18 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
             throw updateError;
           }
         }
+        */
         
-        return { badgeEarned: badgeType };
+        // Just for testing, return a simple success object
+        return { success: true, data: checkInResult };
       } catch (error: any) {
         console.error("Check-in process error:", error);
+        // Log detailed error info
+        console.error("Error type:", typeof error);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+        if (error.code) console.error("Error code:", error.code);
+        if (error.details) console.error("Error details:", error.details);
         throw error;
       }
     },
@@ -157,31 +178,30 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       setIsSubmitting(true);
     },
     onSuccess: (data, variables) => {
-      console.log("Check-in successful:", data);
-      // Invalidate queries to refetch data
+      console.log("Check-in mutation succeeded:", data);
+      
+      // STEP 4: Temporarily simplify success handling for debugging
+      console.log("DEBUGGING: Success! Simplified handling for testing");
+      
+      // Invalidate queries to refetch data but don't navigate or show toasts yet
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       queryClient.invalidateQueries({ queryKey: ["badges"] });
       queryClient.invalidateQueries({ queryKey: ["allCheckIns"] });
       
-      // Show success toast immediately
-      if (data.badgeEarned) {
-        toast({
-          title: "Badge Earned! 🏆",
-          description: `You've earned a ${data.badgeEarned.replace('_', ' ')} badge for ${variables.data.venue_name}`,
-          variant: "default",
-        });
-      } else {
-        toast({
-          title: "Check-in Successful!",
-          description: `You've checked in at ${variables.data.venue_name}`,
-          variant: "default",
-        });
-      }
+      // Simple debug toast instead of fancy one
+      toast({
+        title: "Debug: Check-in Processed",
+        description: `Check-in function completed for ${variables.data.venue_name}`,
+        variant: "default",
+      });
       
-      // Always set isSubmitting to false before navigation to ensure UI updates
+      // Always set isSubmitting to false
       setIsSubmitting(false);
       
+      // TEMPORARILY COMMENT OUT navigation for pure testing
+      console.log("DEBUGGING: Would normally navigate to profile after 500ms");
+      /*
       // Navigate to the profile page after successful check-in with a slight delay
       // to ensure toast is visible and state is updated
       setTimeout(() => {
@@ -194,12 +214,18 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           options.onSuccess();
         }
       }, 500);
+      */
     },
     onError: (error: any) => {
-      console.error("Check-in error:", error);
+      console.error("Check-in mutation failed with error:", error);
+      console.error("Error type:", typeof error);
+      if (error.message) console.error("Error message:", error.message);
+      if (error.code) console.error("Error code:", error.code);
+      if (error.details) console.error("Error details:", error.details);
+      
       toast({
         title: "Check-in Failed",
-        description: error.message || "There was a problem with your check-in. Please try again.",
+        description: `Error: ${error.message || "Unknown error occurred"}`,
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -233,6 +259,8 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       return;
     }
     
+    // Call the mutation
+    console.log("Triggering check-in mutation...");
     checkInMutation.mutate({ data, userId, selectedPlace });
   };
 

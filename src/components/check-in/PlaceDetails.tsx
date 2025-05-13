@@ -11,6 +11,7 @@ import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -27,6 +28,7 @@ export function PlaceDetails({
 }: PlaceDetailsProps) {
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const [submissionAttempts, setSubmissionAttempts] = useState(0);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -35,6 +37,9 @@ export function PlaceDetails({
     if (!isSubmitting && localSubmitting) {
       console.log("External submission completed, resetting local state");
       setLocalSubmitting(false);
+      
+      // Add debug info
+      setDebugInfo("Submission state reset by parent component");
     }
   }, [isSubmitting, localSubmitting]);
   
@@ -43,10 +48,15 @@ export function PlaceDetails({
     let timeoutId: number | undefined;
     
     if (localSubmitting) {
+      // Add debug info
+      setDebugInfo(`Submission in progress, timeout set for 8 seconds`);
+      
       timeoutId = window.setTimeout(() => {
         console.log("Submission timeout reached, resetting UI");
         if (localSubmitting) {
           setLocalSubmitting(false);
+          setDebugInfo("TIMEOUT REACHED: Submission took longer than 8 seconds");
+          
           toast({
             title: "Check-in Taking Too Long",
             description: "The check-in is taking longer than expected. It may still complete in the background.",
@@ -64,10 +74,13 @@ export function PlaceDetails({
   const handleSubmit = (values: any) => {
     if (localSubmitting || isSubmitting) {
       console.log("Already submitting, ignoring click");
+      setDebugInfo("Ignored duplicate submission attempt");
       return; // Prevent double submissions
     }
     
     setSubmissionAttempts(prev => prev + 1);
+    setDebugInfo(`Starting submission attempt #${submissionAttempts + 1}`);
+    
     console.log("PlaceDetails: Handling form submission with values:", values);
     setLocalSubmitting(true);
     
@@ -80,6 +93,7 @@ export function PlaceDetails({
         if (localSubmitting && !isSubmitting) {
           console.log("Submission did not start properly, showing error toast");
           setLocalSubmitting(false);
+          setDebugInfo("ERROR: Submission did not properly start after 500ms");
           
           // After multiple attempts, offer navigation option
           if (submissionAttempts > 2) {
@@ -109,6 +123,8 @@ export function PlaceDetails({
     } catch (error) {
       console.error("Error in check-in submission:", error);
       setLocalSubmitting(false);
+      setDebugInfo(`ERROR: Exception caught in submission handler: ${error}`);
+      
       toast({
         title: "Check-in Failed",
         description: "There was a problem processing your check-in. Please try again.",
@@ -163,6 +179,20 @@ export function PlaceDetails({
             </FormItem>
           )}
         />
+
+        {/* Debug Info (visible during development) */}
+        {debugInfo && (
+          <Alert className="bg-gray-50 border-gray-300">
+            <AlertTitle>Debug Info</AlertTitle>
+            <AlertDescription className="text-xs font-mono">
+              Status: {combinedSubmitting ? "SUBMITTING" : "READY"}<br/>
+              Local State: {localSubmitting ? "SUBMITTING" : "IDLE"}<br/>
+              Parent State: {isSubmitting ? "SUBMITTING" : "IDLE"}<br/>
+              Attempts: {submissionAttempts}<br/>
+              Info: {debugInfo}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Button
           type="submit"

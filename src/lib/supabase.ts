@@ -125,7 +125,15 @@ export const createCheckIn = async (checkInData: {
   notes?: string;
 }) => {
   try {
-    console.log("Creating check-in with data:", JSON.stringify(checkInData, null, 2));
+    // STEP 1: Log the full payload being sent to Supabase
+    console.log("=== CREATING CHECK-IN ===");
+    console.log("User ID:", checkInData.user_id);
+    console.log("Venue Name:", checkInData.venue_name);
+    console.log("Venue Type:", checkInData.venue_type);
+    console.log("Location:", checkInData.location);
+    console.log("Check-in Time:", checkInData.check_in_time);
+    console.log("Notes:", checkInData.notes || "No notes provided");
+    console.log("Full payload:", JSON.stringify(checkInData, null, 2));
     
     // Validate required fields to prevent silent failures
     if (!checkInData.user_id) throw new Error("Missing user_id in check-in data");
@@ -135,17 +143,36 @@ export const createCheckIn = async (checkInData: {
     if (!checkInData.check_in_time) throw new Error("Missing check_in_time in check-in data");
     
     // Log out the exact supabase operation we're about to perform
-    console.log("Inserting into check_ins table with user_id:", checkInData.user_id);
+    console.log("Inserting into check_ins table with table name:", "check_ins");
     
+    // STEP 6: Print a hardcoded test to check Supabase connectivity
+    console.log("Testing Supabase connection with a query...");
+    const testQuery = await supabase.from("check_ins").select("count(*)").limit(1);
+    console.log("Test query result:", testQuery);
+    
+    // STEP 5: Confirm table and field names exactly
+    console.log("Executing insert with confirmed table name: check_ins");
+    console.log("Field mapping: user_id, venue_name, venue_type, location, check_in_time, notes");
+    
+    // Execute the insert with explicit awaiting
+    console.log("ACTUALLY EXECUTING INSERT NOW...");
     const { data, error, status } = await supabase
       .from("check_ins")
       .insert([checkInData])
       .select()
       .single();
 
+    // STEP 2: Log the Supabase response
+    console.log("Supabase insert complete");
+    console.log("Status code:", status);
+    console.log("Return data:", data);
+    console.log("Return error:", error);
+
     if (error) {
       console.error("Supabase error creating check-in:", error);
-      console.error("Status code:", status);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      console.error("Error details:", error.details);
       throw error;
     }
     
@@ -158,7 +185,8 @@ export const createCheckIn = async (checkInData: {
     return data;
   } catch (error: any) {
     console.error("Error in createCheckIn function:", error.message || error);
-    console.error("Full error:", error);
+    console.error("Stack trace:", error.stack);
+    console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     throw error; // Re-throw to ensure error propagation
   }
 };
