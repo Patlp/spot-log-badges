@@ -26,6 +26,7 @@ export function PlaceDetails({
   onSubmit
 }: PlaceDetailsProps) {
   const [localSubmitting, setLocalSubmitting] = useState(false);
+  const [submissionAttempts, setSubmissionAttempts] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -37,12 +38,36 @@ export function PlaceDetails({
     }
   }, [isSubmitting, localSubmitting]);
   
+  // Safety timeout to prevent UI from being stuck
+  useEffect(() => {
+    let timeoutId: number | undefined;
+    
+    if (localSubmitting) {
+      timeoutId = window.setTimeout(() => {
+        console.log("Submission timeout reached, resetting UI");
+        if (localSubmitting) {
+          setLocalSubmitting(false);
+          toast({
+            title: "Check-in Taking Too Long",
+            description: "The check-in is taking longer than expected. It may still complete in the background.",
+            variant: "warning"
+          });
+        }
+      }, 8000); // 8 second timeout
+    }
+    
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [localSubmitting, toast]);
+  
   const handleSubmit = (values: any) => {
     if (localSubmitting || isSubmitting) {
       console.log("Already submitting, ignoring click");
       return; // Prevent double submissions
     }
     
+    setSubmissionAttempts(prev => prev + 1);
     console.log("PlaceDetails: Handling form submission with values:", values);
     setLocalSubmitting(true);
     
@@ -55,14 +80,32 @@ export function PlaceDetails({
         if (localSubmitting && !isSubmitting) {
           console.log("Submission did not start properly, showing error toast");
           setLocalSubmitting(false);
-          toast({
-            title: "Check-in Issue",
-            description: "There was a problem processing your check-in. Please try again.",
-            variant: "destructive"
-          });
+          
+          // After multiple attempts, offer navigation option
+          if (submissionAttempts > 2) {
+            toast({
+              title: "Having Trouble Checking In?",
+              description: "Your check-in may have been processed. Try checking your profile?",
+              variant: "destructive",
+              action: (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/profile')}
+                >
+                  Go to Profile
+                </Button>
+              )
+            });
+          } else {
+            toast({
+              title: "Check-in Issue",
+              description: "There was a problem processing your check-in. Please try again.",
+              variant: "destructive"
+            });
+          }
         }
       }, 500);
-      
     } catch (error) {
       console.error("Error in check-in submission:", error);
       setLocalSubmitting(false);

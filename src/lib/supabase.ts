@@ -1,12 +1,13 @@
 
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from '@/integrations/supabase/types';
 
 // Get the Supabase URL and Anon Key from the environment
 const supabaseUrl = "https://rtbicjimopzlqpodwjcm.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0Ymljamltb3B6bHFwb2R3amNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMzU3OTQsImV4cCI6MjA2MjcxMTc5NH0.YIkf-O5N0nq1f41ybefYu6Eey7qOOhusdCamjLbJHJM";
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true
@@ -114,7 +115,7 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in
+// Function to create a check-in - IMPROVED with enhanced error handling and debug logging
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
@@ -124,22 +125,41 @@ export const createCheckIn = async (checkInData: {
   notes?: string;
 }) => {
   try {
-    console.log("Creating check-in with data:", checkInData);
-    const { data, error } = await supabase
+    console.log("Creating check-in with data:", JSON.stringify(checkInData, null, 2));
+    
+    // Validate required fields to prevent silent failures
+    if (!checkInData.user_id) throw new Error("Missing user_id in check-in data");
+    if (!checkInData.venue_name) throw new Error("Missing venue_name in check-in data");
+    if (!checkInData.venue_type) throw new Error("Missing venue_type in check-in data");
+    if (!checkInData.location) throw new Error("Missing location in check-in data");
+    if (!checkInData.check_in_time) throw new Error("Missing check_in_time in check-in data");
+    
+    // Log out the exact supabase operation we're about to perform
+    console.log("Inserting into check_ins table with user_id:", checkInData.user_id);
+    
+    const { data, error, status } = await supabase
       .from("check_ins")
       .insert([checkInData])
       .select()
       .single();
 
     if (error) {
-      console.error("Error creating check-in:", error);
+      console.error("Supabase error creating check-in:", error);
+      console.error("Status code:", status);
       throw error;
     }
+    
+    if (!data) {
+      console.error("No data returned from check-in insert");
+      throw new Error("Check-in was created but no data was returned");
+    }
+    
     console.log("Check-in created successfully:", data);
     return data;
-  } catch (error) {
-    console.error("Error in createCheckIn function:", error);
-    throw error;
+  } catch (error: any) {
+    console.error("Error in createCheckIn function:", error.message || error);
+    console.error("Full error:", error);
+    throw error; // Re-throw to ensure error propagation
   }
 };
 
@@ -196,7 +216,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c; // Distance in meters
 };
 
-// Function to save a venue - improved to better handle errors
+// Function to save a venue - improved with better error handling and debugging
 export const saveVenue = async (venueData: {
   place_id: string;
   name: string;
@@ -213,8 +233,14 @@ export const saveVenue = async (venueData: {
   try {
     console.log("Saving venue data:", venueData);
     
+    // Double-check latitude and longitude are valid numbers
+    if (isNaN(venueData.latitude) || isNaN(venueData.longitude)) {
+      console.error("Invalid coordinates in venue data:", venueData);
+      return false;
+    }
+    
     // Allow anonymous insert even without user
-    const { error } = await supabase
+    const { error, status } = await supabase
       .from("venues")
       .upsert([venueData], { 
         onConflict: 'place_id', 
@@ -223,7 +249,7 @@ export const saveVenue = async (venueData: {
       
     if (error) {
       console.error("Error saving venue:", error);
-      // Don't throw error, just return false
+      console.error("Status code:", status);
       return false;
     }
     
@@ -231,7 +257,6 @@ export const saveVenue = async (venueData: {
     return true;
   } catch (error) {
     console.error("Error in saveVenue function:", error);
-    // Don't throw error, just return false
     return false;
   }
 };

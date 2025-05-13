@@ -28,6 +28,11 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       selectedPlace: Place | null 
     }) => {
       console.log("Starting check-in process with data:", data);
+      
+      if (!userId) {
+        throw new Error("User ID is required for check-in");
+      }
+      
       try {
         // Create the check-in
         const checkInData = {
@@ -126,7 +131,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           const newBadges = badgeType ? (profileData.total_badges || 0) + 1 : (profileData.total_badges || 0);
           const newUniqueVenues = existingCheckins?.length === 1 ? (profileData.unique_venues || 0) + 1 : (profileData.unique_venues || 0);
           
-          await supabase
+          const { error: updateError } = await supabase
             .from("profiles")
             .update({
               total_check_ins: newCheckIns,
@@ -134,6 +139,11 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
               unique_venues: newUniqueVenues,
             })
             .eq("id", userId);
+            
+          if (updateError) {
+            console.error("Error updating profile stats:", updateError);
+            throw updateError;
+          }
         }
         
         return { badgeEarned: badgeType };
@@ -183,7 +193,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           console.log("Calling onSuccess callback");
           options.onSuccess();
         }
-      }, 300);
+      }, 500);
     },
     onError: (error: any) => {
       console.error("Check-in error:", error);
@@ -196,6 +206,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
     },
     onSettled: () => {
       // Ensure isSubmitting is reset regardless of success/failure
+      console.log("Check-in mutation settled");
       setIsSubmitting(false);
     }
   });
@@ -209,7 +220,16 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         description: "You must be logged in to check in.",
         variant: "destructive",
       });
-      setIsSubmitting(false);
+      return;
+    }
+    
+    // Check for missing required fields
+    if (!data.venue_name || !data.venue_type || !data.location || !data.check_in_time) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill out all required fields.",
+        variant: "destructive",
+      });
       return;
     }
     
