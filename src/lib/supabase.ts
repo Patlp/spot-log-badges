@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -115,7 +114,7 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in - IMPROVED with enhanced error handling and debug logging
+// Function to create a check-in - IMPROVED with enhanced error handling, debugging and hardcoded test
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
@@ -142,27 +141,62 @@ export const createCheckIn = async (checkInData: {
     if (!checkInData.location) throw new Error("Missing location in check-in data");
     if (!checkInData.check_in_time) throw new Error("Missing check_in_time in check-in data");
     
+    // HARDCODED TEST: Try a minimal insert with static values to test connection
+    console.log("RUNNING HARDCODED TEST INSERT FIRST...");
+    const testPayload = {
+      user_id: checkInData.user_id, // use real user_id for RLS
+      venue_name: "TEST VENUE",
+      venue_type: "Other" as VenueType,
+      location: "Test Location",
+      check_in_time: new Date().toISOString(),
+    };
+    
+    console.log("Test payload:", testPayload);
+    
+    const testResult = await supabase
+      .from("check_ins")
+      .insert([testPayload]);
+      
+    console.log("HARDCODED TEST RESULT:", testResult);
+    
+    if (testResult.error) {
+      console.error("TEST INSERT FAILED:", testResult.error);
+      console.error("Error code:", testResult.error.code);
+      console.error("Error message:", testResult.error.message);
+      console.error("Error details:", testResult.error.details);
+      throw new Error(`Test insert failed: ${testResult.error.message}`);
+    } else {
+      console.log("TEST INSERT SUCCEEDED, proceeding with actual insert");
+    }
+    
     // Log out the exact supabase operation we're about to perform
     console.log("Inserting into check_ins table with table name:", "check_ins");
     
-    // STEP 6: Print a hardcoded test to check Supabase connectivity
+    // STEP 2: Print a hardcoded test to check Supabase connectivity
     console.log("Testing Supabase connection with a query...");
     const testQuery = await supabase.from("check_ins").select("count(*)").limit(1);
     console.log("Test query result:", testQuery);
     
-    // STEP 5: Confirm table and field names exactly
-    console.log("Executing insert with confirmed table name: check_ins");
-    console.log("Field mapping: user_id, venue_name, venue_type, location, check_in_time, notes");
+    // Create a minimal payload with only required fields
+    const minimalPayload = {
+      user_id: checkInData.user_id,
+      venue_name: checkInData.venue_name,
+      venue_type: checkInData.venue_type,
+      location: checkInData.location,
+      check_in_time: checkInData.check_in_time,
+      // notes is optional - omitting
+    };
+    
+    console.log("MINIMAL PAYLOAD (no optional fields):", minimalPayload);
     
     // Execute the insert with explicit awaiting
     console.log("ACTUALLY EXECUTING INSERT NOW...");
     const { data, error, status } = await supabase
       .from("check_ins")
-      .insert([checkInData])
-      .select()
-      .single();
+      .insert([minimalPayload])
+      .select();
 
-    // STEP 2: Log the Supabase response
+    // Log the Supabase response
     console.log("Supabase insert complete");
     console.log("Status code:", status);
     console.log("Return data:", data);
@@ -176,16 +210,28 @@ export const createCheckIn = async (checkInData: {
       throw error;
     }
     
-    if (!data) {
+    if (!data || data.length === 0) {
       console.error("No data returned from check-in insert");
       throw new Error("Check-in was created but no data was returned");
     }
     
     console.log("Check-in created successfully:", data);
-    return data;
+    return data[0];
   } catch (error: any) {
     console.error("Error in createCheckIn function:", error.message || error);
     console.error("Stack trace:", error.stack);
+    
+    // Handle and log specific Supabase error types
+    if (error.code === "PGRST301") {
+      console.error("SUPABASE PERMISSION DENIED: This is likely an RLS policy issue");
+    }
+    if (error.code === "23503") {
+      console.error("FOREIGN KEY VIOLATION: One of the references doesn't exist");
+    }
+    if (error.code === "23505") {
+      console.error("UNIQUE VIOLATION: Trying to insert a duplicate value");
+    }
+    
     console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     throw error; // Re-throw to ensure error propagation
   }

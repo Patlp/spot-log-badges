@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, createCheckIn, VenueType, saveVenue } from "@/lib/supabase";

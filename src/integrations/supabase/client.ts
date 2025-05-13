@@ -17,8 +17,29 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     // Fixed TypeScript error by properly typing the fetch parameters
     fetch: (url: RequestInfo | URL, options?: RequestInit) => {
-      console.log("Supabase fetch from client.ts:", url);
-      return fetch(url, options);
+      console.log("Supabase fetch from client.ts:", url, options);
+      
+      // Add detailed logging for debugging
+      if (typeof url === 'string' && url.includes('check_ins')) {
+        console.log("DETECTED CHECK-IN REQUEST:", {
+          method: options?.method || 'GET',
+          headers: options?.headers ? 'Present' : 'None',
+          body: options?.body ? JSON.parse(options.body.toString()) : 'None'
+        });
+      }
+      
+      // Add logging for request completion
+      return fetch(url, options).then(response => {
+        console.log(`Supabase fetch response for ${url}:`, {
+          status: response.status,
+          ok: response.ok,
+          statusText: response.statusText
+        });
+        return response;
+      }).catch(error => {
+        console.error(`Supabase fetch error for ${url}:`, error);
+        throw error;
+      });
     },
   },
 });

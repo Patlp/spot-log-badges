@@ -28,7 +28,7 @@ export function PlaceDetails({
 }: PlaceDetailsProps) {
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const [submissionAttempts, setSubmissionAttempts] = useState(0);
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>("Initial state");
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -60,7 +60,7 @@ export function PlaceDetails({
           toast({
             title: "Check-in Taking Too Long",
             description: "The check-in is taking longer than expected. It may still complete in the background.",
-            variant: "default" // Changed from "warning" to "default" to match allowed variants
+            variant: "default"
           });
         }
       }, 8000); // 8 second timeout
@@ -79,13 +79,15 @@ export function PlaceDetails({
     }
     
     setSubmissionAttempts(prev => prev + 1);
-    setDebugInfo(`Starting submission attempt #${submissionAttempts + 1}`);
+    setDebugInfo(`Starting submission attempt #${submissionAttempts + 1} with values: ${JSON.stringify(values)}`);
     
     console.log("PlaceDetails: Handling form submission with values:", values);
     setLocalSubmitting(true);
     
     try {
-      console.log("PlaceDetails: Calling onSubmit");
+      console.log("PlaceDetails: Calling onSubmit with:");
+      console.log("- Values:", values);
+      console.log("- Selected Place:", selectedPlace);
       onSubmit(values);
       
       // If submission hasn't set isSubmitting to true within 500ms, something might be wrong
@@ -180,19 +182,17 @@ export function PlaceDetails({
           )}
         />
 
-        {/* Debug Info (visible during development) */}
-        {debugInfo && (
-          <Alert className="bg-gray-50 border-gray-300">
-            <AlertTitle>Debug Info</AlertTitle>
-            <AlertDescription className="text-xs font-mono">
-              Status: {combinedSubmitting ? "SUBMITTING" : "READY"}<br/>
-              Local State: {localSubmitting ? "SUBMITTING" : "IDLE"}<br/>
-              Parent State: {isSubmitting ? "SUBMITTING" : "IDLE"}<br/>
-              Attempts: {submissionAttempts}<br/>
-              Info: {debugInfo}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Debug Info - Always shown for now for debugging */}
+        <Alert className="bg-gray-50 border-gray-300">
+          <AlertTitle>Debug Info</AlertTitle>
+          <AlertDescription className="text-xs font-mono">
+            Status: {combinedSubmitting ? "SUBMITTING" : "READY"}<br/>
+            Local State: {localSubmitting ? "SUBMITTING" : "IDLE"}<br/>
+            Parent State: {isSubmitting ? "SUBMITTING" : "IDLE"}<br/>
+            Attempts: {submissionAttempts}<br/>
+            Info: {debugInfo}
+          </AlertDescription>
+        </Alert>
 
         <Button
           type="submit"
