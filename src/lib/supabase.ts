@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -13,6 +12,30 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true
   },
 });
+
+// Create storage bucket for avatars if it doesn't exist
+const initStorage = async () => {
+  try {
+    // Check if avatars bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+
+    if (!avatarBucketExists) {
+      // Create avatars bucket
+      await supabase.storage.createBucket('avatars', {
+        public: true,
+        fileSizeLimit: 5242880, // 5MB
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif']
+      });
+      console.log('Created avatars storage bucket');
+    }
+  } catch (error) {
+    console.error('Error initializing storage:', error);
+  }
+};
+
+// Initialize storage on load
+initStorage();
 
 // Define the types for venue types
 export type VenueType = "Restaurant" | "Bar" | "Club" | "Event" | "Other";
@@ -30,6 +53,48 @@ export const getProfile = async (userId: string) => {
     return data;
   } catch (error) {
     console.error("Error getting profile:", error);
+    throw error;
+  }
+};
+
+// Function to update user profile
+export const updateProfile = async (userId: string, updates: { username?: string; avatar_url?: string }) => {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", userId)
+      .select();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    throw error;
+  }
+};
+
+// Function to upload avatar
+export const uploadAvatar = async (userId: string, file: File) => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    
+    // Upload file
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file);
+    
+    if (uploadError) throw uploadError;
+    
+    // Get public URL
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+    
+    return data.publicUrl;
+  } catch (error) {
+    console.error("Error uploading avatar:", error);
     throw error;
   }
 };

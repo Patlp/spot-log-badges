@@ -1,5 +1,7 @@
 
-import { useContext } from "react";
+// Only modifying the necessary part of LeaderboardPage to ensure avatars display correctly
+
+import { useContext, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../App";
 import { useQuery } from "@tanstack/react-query";
@@ -13,10 +15,20 @@ import { Trophy, MapPin, Award } from "lucide-react";
 const LeaderboardPage = () => {
   const { user } = useContext(AuthContext);
 
-  const { data: leaderboard, isLoading } = useQuery({
+  const { data: leaderboard, isLoading, refetch: refetchLeaderboard } = useQuery({
     queryKey: ["leaderboard"],
     queryFn: getLeaderboard,
   });
+
+  // Refresh leaderboard when focused to ensure we have the latest avatar updates
+  useEffect(() => {
+    const onFocus = () => {
+      refetchLeaderboard();
+    };
+    
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refetchLeaderboard]);
 
   const getInitials = (username?: string) => {
     if (!username) return "U";

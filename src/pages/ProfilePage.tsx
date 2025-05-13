@@ -12,12 +12,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Award, CheckCircle, Trophy, Star, Flag, User } from "lucide-react";
 import { format } from "date-fns";
+import EditProfileDialog from "@/components/profile/EditProfileDialog";
 
 const ProfilePage = () => {
   const { user } = useContext(AuthContext);
   const { id } = useParams();
   const userId = id || user?.id || '';
   const isOwnProfile = userId === user?.id;
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   // Badge icons mapping
   const badgeIcons: Record<string, any> = {
@@ -27,23 +29,27 @@ const ProfilePage = () => {
     "adventurer": <Trophy className="h-5 w-5" />,
   };
 
-  const { data: profile, isLoading: profileLoading } = useQuery({
-    queryKey: ["profile", userId],
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
+    queryKey: ["profile", userId, refetchTrigger],
     queryFn: () => getProfile(userId),
     enabled: !!userId,
   });
 
   const { data: checkIns, isLoading: checkInsLoading } = useQuery({
-    queryKey: ["checkIns", userId],
+    queryKey: ["checkIns", userId, refetchTrigger],
     queryFn: () => getCheckIns(userId, 10),
     enabled: !!userId,
   });
 
   const { data: badges, isLoading: badgesLoading } = useQuery({
-    queryKey: ["badges", userId],
+    queryKey: ["badges", userId, refetchTrigger],
     queryFn: () => getUserBadges(userId),
     enabled: !!userId,
   });
+
+  const handleProfileUpdated = () => {
+    setRefetchTrigger(prev => prev + 1);
+  };
 
   const getInitials = (username?: string) => {
     if (!username) return "U";
@@ -96,9 +102,12 @@ const ProfilePage = () => {
                 Explorer since {profile && format(new Date(profile.created_at), 'MMMM yyyy')}
               </p>
               {isOwnProfile && (
-                <Button variant="outline" size="sm">
-                  Edit Profile
-                </Button>
+                <EditProfileDialog 
+                  userId={userId} 
+                  username={profile?.username}
+                  avatarUrl={profile?.avatar_url}
+                  onProfileUpdated={handleProfileUpdated}
+                />
               )}
             </div>
           </div>
