@@ -61,10 +61,17 @@ export async function getNearbyPlaces(
     console.log(`No cached places found, fetching from API at ${latitude}, ${longitude}`);
     
     // Call our edge function to get places from Google Places API
-    const apiUrl = `${window.location.origin.includes('localhost') ? 'https://rtbicjimopzlqpodwjcm.supabase.co' : ''}/functions/v1/get-nearby-places?lat=${latitude}&lng=${longitude}&radius=${radius}`;
+    // Use the full project URL for the Supabase functions endpoint
+    const projectUrl = 'https://rtbicjimopzlqpodwjcm.supabase.co';
+    const apiUrl = `${projectUrl}/functions/v1/get-nearby-places?lat=${latitude}&lng=${longitude}&radius=${radius}`;
     console.log(`Fetching places from: ${apiUrl}`);
     
-    const response = await fetch(apiUrl);
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
     
     if (!response.ok) {
       const errorData = await response.text();

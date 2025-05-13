@@ -6,6 +6,7 @@ const GOOGLE_PLACES_API_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY") || "";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
 };
 
 serve(async (req) => {
@@ -20,18 +21,20 @@ serve(async (req) => {
   const lng = url.searchParams.get("lng");
   const radius = url.searchParams.get("radius") || "500";
 
+  console.log(`Received request for places at coordinates: ${lat},${lng} with radius: ${radius}m`);
+
   // Validate parameters
   if (!lat || !lng) {
     return new Response(
       JSON.stringify({ error: "Latitude and longitude are required" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 400, headers: corsHeaders }
     );
   }
 
   if (!GOOGLE_PLACES_API_KEY) {
     return new Response(
       JSON.stringify({ error: "Google Places API key not configured" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: corsHeaders }
     );
   }
 
@@ -67,18 +70,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify(data),
       { 
-        headers: { 
-          ...corsHeaders, 
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=300" // Cache for 5 minutes
-        } 
+        headers: corsHeaders,
+        status: 200
       }
     );
   } catch (error) {
     console.error("Error in get-nearby-places function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: corsHeaders }
     );
   }
 });
