@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCheckIn, VenueType, saveVenue } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,13 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   
+  // Create a separate function to handle navigation safely
+  const navigateToProfile = useCallback(() => {
+    console.log("[useCheckIn] Navigating to profile page");
+    navigate("/profile");
+  }, [navigate]);
+  
+  // The mutation setup
   const checkInMutation = useMutation({
     mutationFn: async ({ 
       data, 
@@ -88,26 +95,32 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       
-      // Show success toast
+      // IMPORTANT: First show toast and THEN reset state before navigation
       toast({
         title: "Check-in Successful!",
         description: "Your check-in has been recorded.",
-        duration: 5000,
+        duration: 3000,
       });
+      
+      // Reset the submission state BEFORE navigation
+      setIsSubmitting(false);
       
       // Call the success callback if provided
       if (options?.onSuccess) {
         options.onSuccess();
       }
 
-      // Small delay before navigation to ensure toast is shown
+      // Use a small delay before navigation to ensure toast is visible
+      // and state updates have been processed
       setTimeout(() => {
-        navigate("/profile");
-        setIsSubmitting(false);
+        navigateToProfile();
       }, 500);
     },
     onError: (error: any) => {
       console.error("[useCheckIn] Mutation failed:", error);
+      
+      // Reset submission state immediately on error
+      setIsSubmitting(false);
       
       // Set the error state
       setCheckInError(error.message || "Unknown error occurred");
@@ -116,26 +129,14 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       toast({
         title: "Check-in Failed",
         description: `Error: ${error.message || "Unknown error occurred"}`,
-        duration: 7000, // Give more time to read error messages
+        duration: 5000,
+        variant: "destructive"
       });
-      
-      // Reset submission state
-      setIsSubmitting(false);
-    },
-    onSettled: () => {
-      // Ensure state is reset after a timeout if not already reset
-      const timeoutId = setTimeout(() => {
-        if (isSubmitting) {
-          console.log("[useCheckIn] Force resetting isSubmitting state");
-          setIsSubmitting(false);
-        }
-      }, 10000); // 10 seconds safety timeout
-      
-      return () => clearTimeout(timeoutId);
-    },
+    }
   });
 
-  const handleCheckIn = (data: CheckInFormValues, userId: string, selectedPlace: Place | null) => {
+  // Simplified check-in handler with better error boundary
+  const handleCheckIn = useCallback((data: CheckInFormValues, userId: string, selectedPlace: Place | null) => {
     console.log("[useCheckIn] handleCheckIn called with:", { data, userId });
     
     if (isSubmitting) {
@@ -148,6 +149,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         title: "Authentication Required",
         description: "You must be logged in to check in.",
         duration: 5000,
+        variant: "warning"
       });
       return;
     }
@@ -158,14 +160,29 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         title: "Missing Information",
         description: "Please fill out all required fields.",
         duration: 5000,
+        variant: "warning"
       });
       return;
     }
     
-    // Call the mutation
-    console.log("[useCheckIn] Triggering check-in mutation...");
-    checkInMutation.mutate({ data, userId, selectedPlace });
-  };
+    try {
+      // Call the mutation with explicit error handling
+      console.log("[useCheckIn] Triggering check-in mutation...");
+      checkInMutation.mutate({ data, userId, selectedPlace });
+    } catch (error: any) {
+      // Catch any synchronous errors (should be rare with async mutation)
+      console.error("[useCheckIn] Unexpected error during mutation trigger:", error);
+      setIsSubmitting(false);
+      setCheckInError(error.message || "An unexpected error occurred");
+      
+      toast({
+        title: "Check-in Failed",
+        description: "There was an unexpected error. Please try again.",
+        duration: 5000,
+        variant: "destructive"
+      });
+    }
+  }, [isSubmitting, checkInMutation]);
 
   return {
     isSubmitting,

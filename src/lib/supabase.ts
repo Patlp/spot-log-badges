@@ -173,7 +173,7 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in - SIMPLIFIED with standard Supabase client
+// Function to create a check-in - Improved error handling
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
@@ -183,7 +183,7 @@ export const createCheckIn = async (checkInData: {
   notes?: string;
 }) => {
   try {
-    console.log("=== CREATING CHECK-IN (DIRECT IMPLEMENTATION) ===");
+    console.log("=== CREATING CHECK-IN (IMPROVED IMPLEMENTATION) ===");
     console.log("Check-in started", checkInData);
     
     // Validate required fields
@@ -205,7 +205,7 @@ export const createCheckIn = async (checkInData: {
     
     console.log("Using payload:", JSON.stringify(payload, null, 2));
     
-    // Simple and direct insert using EXACTLY the requested structure
+    // Insert with proper error handling
     const { data, error } = await supabase
       .from("check_ins")
       .insert([payload])
@@ -224,6 +224,23 @@ export const createCheckIn = async (checkInData: {
     }
     
     console.log("Insert succeeded:", data);
+    
+    // Also update the user's check-in count in the profile
+    try {
+      const { error: updateError } = await supabase.rpc('increment_check_in_count', {
+        user_id_param: checkInData.user_id,
+        venue_name_param: checkInData.venue_name
+      });
+      
+      if (updateError) {
+        console.warn("Failed to update profile check-in count:", updateError);
+        // Don't throw here, just log the warning
+      }
+    } catch (updateError) {
+      console.warn("Error updating profile after check-in:", updateError);
+      // Don't throw here, the check-in was successful
+    }
+    
     return data[0];
     
   } catch (error: any) {

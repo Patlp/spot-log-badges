@@ -29,15 +29,17 @@ export function PlaceDetails({
   const handleSubmit = (values: any) => {
     // Clear any previous error
     setSubmitError(null);
-    console.log("PlaceDetails: Submitting form with values:", values);
+    console.log("[PlaceDetails] Submitting form with values:", values);
     
     try {
       onSubmit(values);
     } catch (error: any) {
-      console.error("PlaceDetails: Synchronous error during submit:", error);
+      console.error("[PlaceDetails] Synchronous error during submit:", error);
       setSubmitError(error.message || "An unexpected error occurred");
     }
   };
+
+  console.log("[PlaceDetails] Render with isSubmitting:", isSubmitting);
 
   return (
     <Form {...form}>

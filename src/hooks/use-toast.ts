@@ -1,6 +1,6 @@
 
 // Re-export from the proper source using the Sonner toast library
-import { toast as sonnerToast } from "sonner";
+import { toast as sonnerToast, ToastT } from "sonner";
 
 // Provide a consistent toast API that wraps Sonner
 export function toast(props: { 
