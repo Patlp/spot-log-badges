@@ -204,26 +204,28 @@ export const createCheckIn = async (checkInData: {
           }
         } else {
           // Check if this is their 3rd+ check-in at this venue, award a "regular" badge
-          const checkInsQuery = supabase
+          // First get the count of check-ins at this venue for this user
+          const { count, error: countError } = await supabase
             .from("check_ins")
-            .select("*", { count: 'exact', head: false });
-          
-          // Add filters to the query
-          const { count, error: countError } = await checkInsQuery
+            .select("*", { count: 'exact', head: true })
             .eq("user_id", checkInData.user_id)
             .eq("venue_name", checkInData.venue_name);
             
+          console.log("Check-ins count result:", { count, error: countError });
+            
           if (!countError && count && count >= 3) {
-            // Check if they already have a regular badge for this venue
-            const badgesQuery = supabase
+            console.log(`User has ${count} check-ins at ${checkInData.venue_name}, checking for regular badge...`);
+            
+            // Check if they already have a regular badge for this venue - Must use separate queries
+            const { data: existingBadges, error: badgeQueryError } = await supabase
               .from("badges")
-              .select("*");
-              
-            const { data: existingBadges, error: badgeQueryError } = await badgesQuery
+              .select("*")
               .eq("user_id", checkInData.user_id)
-              .eq("venue_name", checkInData.venue_name)
               .eq("badge_type", "regular")
+              .eq("venue_name", checkInData.venue_name)
               .limit(1);
+              
+            console.log("Regular badge check result:", { existingBadges, error: badgeQueryError });
               
             if (!badgeQueryError && (!existingBadges || existingBadges.length === 0)) {
               console.log(`Regular at ${checkInData.venue_name}, awarding badge`);
