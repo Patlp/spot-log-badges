@@ -92,11 +92,22 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
+      queryClient.invalidateQueries({ queryKey: ["badges"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      
+      // Check for badge in the response to show in toast
+      let badgeMsg = "";
+      if (data && data.data && data.data.badge) {
+        badgeMsg = `Badge earned: ${data.data.badge.badge_type.replace('_', ' ')}!`;
+      }
+      
+      // Determine venue name from data
+      const venueName = data?.data?.venue_name || "the venue";
       
       // Show success toast
       toast({
         title: "Check-in Successful!",
-        description: "Your check-in has been recorded.",
+        description: `You checked in at ${venueName}. ${badgeMsg}`,
         variant: "default",
       });
       
