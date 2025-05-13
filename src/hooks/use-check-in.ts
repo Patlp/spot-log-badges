@@ -41,13 +41,16 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         if (selectedPlace) {
           // Store the venue in our venues table for future reference
           try {
-            await saveVenue({
-              place_id: selectedPlace.place_id,
-              name: selectedPlace.name,
-              address: selectedPlace.address,
-              types: selectedPlace.types,
-              latitude: selectedPlace.latitude,
-              longitude: selectedPlace.longitude,
+            // We don't need to wait for this to complete
+            await Promise.resolve().then(async () => {
+              await saveVenue({
+                place_id: selectedPlace.place_id,
+                name: selectedPlace.name,
+                address: selectedPlace.address,
+                types: selectedPlace.types,
+                latitude: selectedPlace.latitude,
+                longitude: selectedPlace.longitude,
+              });
             });
           } catch (venueError) {
             console.error("Venue storage error:", venueError);
@@ -55,7 +58,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           }
         }
         
-        await createCheckIn(checkInData);
+        const checkInResult = await createCheckIn(checkInData);
         
         // Check if it's a first visit to this venue
         const { data: existingCheckins, error: checkError } = await supabase

@@ -159,16 +159,26 @@ export const saveVenue = async (venueData: {
   longitude: number;
 }) => {
   try {
-    const { data, error } = await supabase
+    // Get the current user session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+    
+    if (!user) {
+      console.warn("No authenticated user found when saving venue");
+    }
+    
+    const { error } = await supabase
       .from("venues")
-      .upsert([venueData], { onConflict: 'place_id' })
-      .select()
-      .single();
+      .upsert([venueData], { onConflict: 'place_id' });
       
-    if (error) throw error;
-    return data;
+    if (error) {
+      console.error("Error saving venue:", error);
+      // Don't throw error, just log it
+    }
+    return true;
   } catch (error) {
     console.error("Error saving venue:", error);
-    return null;
+    // Don't throw error, just return false
+    return false;
   }
 };

@@ -44,19 +44,15 @@ export const useNearbyPlaces = () => {
       console.log("Fetched places:", places);
       setNearbyPlaces(places);
       
-      // If we successfully got places, switch to the nearby tab
-      if (places.length > 0) {
-        toast({
-          title: "Places found!",
-          description: `Found ${places.length} places near you.`,
-        });
-      } else {
+      // If no places found, show an error toast
+      if (places.length === 0) {
         toast({
           title: "No places found nearby",
           description: "Try expanding your search area or manually enter venue details.",
           variant: "destructive",
         });
       }
+      // We removed the success toast notification here
     } catch (error) {
       console.error("Error fetching places:", error);
       toast({

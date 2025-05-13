@@ -6,9 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, MapPin } from "lucide-react";
-import { mapGoogleTypeToVenueType } from "@/services/places";
 import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
+import { mapGoogleTypeToVenueType } from "@/services/places";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
