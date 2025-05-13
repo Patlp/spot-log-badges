@@ -66,14 +66,35 @@ serve(async (req) => {
     
     console.log(`Found ${data.results?.length || 0} places`);
 
-    // Return the results with proper headers
-    return new Response(
-      JSON.stringify(data),
-      { 
-        headers: corsHeaders,
-        status: 200
-      }
-    );
+    // Transform Google Places results to our Place format
+    if (data.status === "OK" && data.results && data.results.length > 0) {
+      const places = data.results.map(place => ({
+        place_id: place.place_id,
+        name: place.name,
+        address: place.vicinity,
+        types: place.types || [],
+        latitude: place.geometry.location.lat,
+        longitude: place.geometry.location.lng,
+        // Calculate rough distance if needed
+        distance: calculateDistance(
+          Number(lat), 
+          Number(lng), 
+          place.geometry.location.lat, 
+          place.geometry.location.lng
+        )
+      }));
+      
+      return new Response(
+        JSON.stringify(places),
+        { headers: corsHeaders, status: 200 }
+      );
+    } else {
+      console.log(`API returned status: ${data.status}, no results found or error occurred`);
+      return new Response(
+        JSON.stringify([]),
+        { headers: corsHeaders, status: 200 }
+      );
+    }
   } catch (error) {
     console.error("Error in get-nearby-places function:", error);
     return new Response(
@@ -82,3 +103,16 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to calculate distance between coordinates in meters
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in meters
+}

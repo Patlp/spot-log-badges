@@ -37,15 +37,15 @@ export const getNearbyPlaces = async (
     const cachedPlaces = await getNearbyVenues(latitude, longitude, radius);
     
     if (cachedPlaces && cachedPlaces.length > 0) {
-      console.info(`Found ${cachedPlaces.length} cached places in the database`);
+      console.log(`Found ${cachedPlaces.length} cached places in the database`);
       return cachedPlaces as Place[];
     }
     
-    console.info(`No cached places found, fetching from API at ${latitude}, ${longitude}`);
+    console.log(`No cached places found, fetching from API at ${latitude}, ${longitude}`);
     
     // If no cached places, fetch from the API
     const endpoint = `https://rtbicjimopzlqpodwjcm.supabase.co/functions/v1/get-nearby-places?lat=${latitude}&lng=${longitude}&radius=${radius}`;
-    console.info(`Fetching places from: ${endpoint}`);
+    console.log(`Fetching places from: ${endpoint}`);
     
     const response = await fetch(endpoint);
     
@@ -54,7 +54,15 @@ export const getNearbyPlaces = async (
     }
     
     const places = await response.json();
-    console.info(`Fetched places: ${places.length}`);
+    console.log(`Fetched places response:`, places);
+    
+    // Check if the response is an array
+    if (!Array.isArray(places)) {
+      console.error("API did not return an array of places:", places);
+      return [];
+    }
+    
+    console.log(`Successfully parsed ${places.length} places`);
     
     // Cache the places in our database for future use
     if (places && places.length > 0) {
