@@ -1,6 +1,6 @@
-
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
+import rawSupabase from "./rawSupabaseClient";
 
 // Get the Supabase URL and Anon Key from the environment
 const supabaseUrl = "https://rtbicjimopzlqpodwjcm.supabase.co";
@@ -179,7 +179,7 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in - Fixed type issue and improved logging
+// Function to create a check-in - Using raw client to bypass type issues
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
@@ -217,9 +217,8 @@ export const createCheckIn = async (checkInData: {
     
     console.log("Check-in data prepared:", testData);
     
-    // Insert with proper error handling using the exact structure requested
-    // Using "as any" to bypass type checking as requested
-    const { data, error } = await (supabase as any)
+    // Using the rawSupabase client to bypass type checking
+    const { data, error } = await rawSupabase
       .from("check_ins")
       .insert([testData])
       .select();
