@@ -24,32 +24,46 @@ export function PlaceDetails({
   isSubmitting,
   onSubmit
 }: PlaceDetailsProps) {
-  const [submitted, setSubmitted] = useState(false);
+  const [localSubmitting, setLocalSubmitting] = useState(false);
   const { toast } = useToast();
   
-  // Reset submitted state when isSubmitting changes to false
+  // Reset local submitting state when isSubmitting changes to false
   useEffect(() => {
-    if (!isSubmitting && submitted) {
-      console.log("Submission completed, resetting submitted state");
-      setSubmitted(false);
+    if (!isSubmitting && localSubmitting) {
+      console.log("External submission completed, resetting local state");
+      setLocalSubmitting(false);
     }
-  }, [isSubmitting, submitted]);
+  }, [isSubmitting, localSubmitting]);
   
   const handleSubmit = (values: any) => {
-    if (submitted || isSubmitting) {
-      console.log("Already submitted or submitting, ignoring click");
+    if (localSubmitting || isSubmitting) {
+      console.log("Already submitting, ignoring click");
       return; // Prevent double submissions
     }
     
     console.log("PlaceDetails: Handling form submission with values:", values);
-    setSubmitted(true);
+    setLocalSubmitting(true);
     
     try {
       console.log("PlaceDetails: Calling onSubmit");
       onSubmit(values);
+      
+      // If submission hasn't set isSubmitting to true within 500ms, something might be wrong
+      setTimeout(() => {
+        if (localSubmitting && !isSubmitting) {
+          console.log("Submission did not start properly, showing error toast");
+          setLocalSubmitting(false);
+          toast({
+            title: "Check-in Issue",
+            description: "There was a problem processing your check-in. Please try again.",
+            variant: "destructive"
+          });
+        }
+      }, 500);
+      
     } catch (error) {
       console.error("Error in check-in submission:", error);
-      setSubmitted(false);
+      setLocalSubmitting(false);
       toast({
         title: "Check-in Failed",
         description: "There was a problem processing your check-in. Please try again.",
@@ -57,6 +71,9 @@ export function PlaceDetails({
       });
     }
   };
+
+  // Use a combined submitting state to ensure UI reflects submission properly
+  const combinedSubmitting = isSubmitting || localSubmitting;
 
   return (
     <Form {...form}>
@@ -104,10 +121,10 @@ export function PlaceDetails({
 
         <Button
           type="submit"
-          disabled={isSubmitting || submitted}
+          disabled={combinedSubmitting}
           className="w-full"
         >
-          {isSubmitting ? (
+          {combinedSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Checking In at {selectedPlace.name}...
