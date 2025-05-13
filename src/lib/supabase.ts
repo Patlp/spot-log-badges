@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -203,17 +204,22 @@ export const createCheckIn = async (checkInData: {
           }
         } else {
           // Check if this is their 3rd+ check-in at this venue, award a "regular" badge
-          const { count, error: countError } = await supabase
+          const checkInsQuery = supabase
             .from("check_ins")
-            .select("*", { count: 'exact', head: false })
+            .select("*", { count: 'exact', head: false });
+          
+          // Add filters to the query
+          const { count, error: countError } = await checkInsQuery
             .eq("user_id", checkInData.user_id)
             .eq("venue_name", checkInData.venue_name);
             
           if (!countError && count && count >= 3) {
             // Check if they already have a regular badge for this venue
-            const { data: existingBadges, error: badgeQueryError } = await supabase
+            const badgesQuery = supabase
               .from("badges")
-              .select("*")
+              .select("*");
+              
+            const { data: existingBadges, error: badgeQueryError } = await badgesQuery
               .eq("user_id", checkInData.user_id)
               .eq("venue_name", checkInData.venue_name)
               .eq("badge_type", "regular")
