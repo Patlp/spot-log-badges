@@ -109,47 +109,34 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
             console.error("Error awarding badge:", badgeError);
             throw badgeError;
           }
-          
-          // Update the profile stats
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("total_check_ins, total_badges, unique_venues")
-            .eq("id", userId)
-            .single();
-            
-          if (profileData) {
-            console.log("Updating profile stats:", profileData);
-            await supabase
-              .from("profiles")
-              .update({
-                total_check_ins: profileData.total_check_ins + 1,
-                total_badges: badgeType ? profileData.total_badges + 1 : profileData.total_badges,
-                unique_venues: existingCheckins.length === 1 ? profileData.unique_venues + 1 : profileData.unique_venues,
-              })
-              .eq("id", userId);
-          }
-          
-          return { badgeEarned: badgeType };
-        } else {
-          // Just update check-in count if no badge earned
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("total_check_ins")
-            .eq("id", userId)
-            .single();
-            
-          if (profileData) {
-            console.log("Updating only check-in count:", profileData.total_check_ins + 1);
-            await supabase
-              .from("profiles")
-              .update({
-                total_check_ins: profileData.total_check_ins + 1,
-              })
-              .eq("id", userId);
-          }
-          
-          return { badgeEarned: null };
         }
+          
+        // Update the profile stats
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("total_check_ins, total_badges, unique_venues")
+          .eq("id", userId)
+          .single();
+          
+        if (profileData) {
+          console.log("Updating profile stats:", profileData);
+          
+          // Calculate new values carefully to avoid nulls
+          const newCheckIns = (profileData.total_check_ins || 0) + 1;
+          const newBadges = badgeType ? (profileData.total_badges || 0) + 1 : (profileData.total_badges || 0);
+          const newUniqueVenues = existingCheckins?.length === 1 ? (profileData.unique_venues || 0) + 1 : (profileData.unique_venues || 0);
+          
+          await supabase
+            .from("profiles")
+            .update({
+              total_check_ins: newCheckIns,
+              total_badges: newBadges,
+              unique_venues: newUniqueVenues,
+            })
+            .eq("id", userId);
+        }
+        
+        return { badgeEarned: badgeType };
       } catch (error) {
         console.error("Check-in process error:", error);
         throw error;
@@ -207,6 +194,17 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
 
   const handleCheckIn = (data: CheckInFormValues, userId: string, selectedPlace: Place | null) => {
     console.log("handleCheckIn called with:", { data, userId });
+    
+    if (!userId) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to check in.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
     checkInMutation.mutate({ data, userId, selectedPlace });
   };
 

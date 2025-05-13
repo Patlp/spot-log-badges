@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 
 // Get the Supabase URL and Anon Key from the environment
@@ -12,10 +11,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true
   },
   global: {
-    // Added for debugging - fixed the TypeScript error with the spread operator
-    fetch: (url, options) => {
-      console.log("Supabase fetch:", url);
-      return fetch(url, options);
+    // Fixed TypeScript error with the spread operator by using proper fetch syntax
+    fetch: (...args) => {
+      console.log("Supabase fetch:", args[0]);
+      return fetch(...args);
     },
   },
 });
@@ -196,7 +195,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c; // Distance in meters
 };
 
-// Function to save a venue
+// Function to save a venue - improved to better handle errors
 export const saveVenue = async (venueData: {
   place_id: string;
   name: string;
@@ -205,6 +204,11 @@ export const saveVenue = async (venueData: {
   latitude: number;
   longitude: number;
 }) => {
+  if (!venueData.place_id) {
+    console.error("Cannot save venue: missing place_id");
+    return false;
+  }
+
   try {
     console.log("Saving venue data:", venueData);
     
@@ -213,15 +217,16 @@ export const saveVenue = async (venueData: {
       .from("venues")
       .upsert([venueData], { 
         onConflict: 'place_id', 
-        ignoreDuplicates: true // Changed to true to ignore duplicates
+        ignoreDuplicates: true // Keep true to ignore duplicates
       });
       
     if (error) {
       console.error("Error saving venue:", error);
-      // Don't throw error, just log it
-    } else {
-      console.log("Venue saved successfully");
+      // Don't throw error, just return false
+      return false;
     }
+    
+    console.log("Venue saved successfully");
     return true;
   } catch (error) {
     console.error("Error in saveVenue function:", error);
