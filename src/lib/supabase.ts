@@ -216,18 +216,20 @@ export const createCheckIn = async (checkInData: {
           if (!countError && count && count >= 3) {
             console.log(`User has ${count} check-ins at ${checkInData.venue_name}, checking for regular badge...`);
             
-            // Check if they already have a regular badge for this venue - Must use separate queries
-            const { data: existingBadges, error: badgeQueryError } = await supabase
+            // Check if they already have a regular badge for this venue - Fixed query with proper types
+            const { data: badgeData, error: badgeQueryError } = await supabase
               .from("badges")
               .select("*")
               .eq("user_id", checkInData.user_id)
               .eq("badge_type", "regular")
-              .eq("venue_name", checkInData.venue_name)
-              .limit(1);
+              .eq("venue_name", checkInData.venue_name);
               
-            console.log("Regular badge check result:", { existingBadges, error: badgeQueryError });
+            console.log("Regular badge check result:", { existingBadges: badgeData, error: badgeQueryError });
               
-            if (!badgeQueryError && (!existingBadges || existingBadges.length === 0)) {
+            // Check if badge already exists
+            const badgeExists = badgeData && badgeData.length > 0;
+              
+            if (!badgeQueryError && !badgeExists) {
               console.log(`Regular at ${checkInData.venue_name}, awarding badge`);
               const badgeData = {
                 user_id: checkInData.user_id,
@@ -260,8 +262,7 @@ export const createCheckIn = async (checkInData: {
       const { data: uniqueVenues, error: uniqueError } = await supabase
         .from("check_ins")
         .select("venue_name")
-        .eq("user_id", checkInData.user_id)
-        .is("venue_name", 'not.null');
+        .eq("user_id", checkInData.user_id);
       
       if (uniqueError) {
         console.error("Error getting unique venues:", uniqueError);
