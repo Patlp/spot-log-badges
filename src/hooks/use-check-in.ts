@@ -43,11 +43,12 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           throw new Error("User ID is required for check-in");
         }
         
-        // Create the check-in data - making sure venue_type is cast to VenueType
+        // Create the check-in data - making sure venue_type is properly passed as a string
+        // The validation to confirm it's a valid VenueType happens in createCheckIn
         const checkInData = {
           user_id: userId,
           venue_name: data.venue_name,
-          venue_type: data.venue_type as VenueType,
+          venue_type: data.venue_type, // Pass as string, validation happens in createCheckIn
           location: data.location,
           check_in_time: data.check_in_time,
           notes: data.notes || "",

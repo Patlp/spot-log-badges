@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -177,7 +178,7 @@ export const getLeaderboard = async () => {
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
-  venue_type: VenueType; // Using our explicitly defined VenueType
+  venue_type: string; // Accept string as input
   location: string;
   check_in_time: string;
   notes?: string;
@@ -193,11 +194,17 @@ export const createCheckIn = async (checkInData: {
     if (!checkInData.location) throw new Error("Missing location");
     if (!checkInData.check_in_time) throw new Error("Missing check_in_time");
     
+    // Validate venue_type is one of the allowed values
+    const venueTypeValues: VenueType[] = ["Restaurant", "Bar", "Club", "Event", "Other"];
+    if (!venueTypeValues.includes(checkInData.venue_type as VenueType)) {
+      throw new Error(`Invalid venue_type. Must be one of: ${venueTypeValues.join(', ')}`);
+    }
+    
     // Create a clean payload with only the needed fields
     const payload = {
       user_id: checkInData.user_id,
       venue_name: checkInData.venue_name,
-      venue_type: checkInData.venue_type as VenueType, // Explicit cast to ensure type safety
+      venue_type: checkInData.venue_type as VenueType, // Cast to VenueType after validation
       location: checkInData.location,
       check_in_time: checkInData.check_in_time,
       notes: checkInData.notes || null,
