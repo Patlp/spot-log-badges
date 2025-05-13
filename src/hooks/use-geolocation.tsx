@@ -27,6 +27,7 @@ export function useGeolocation() {
     setLocation(prev => ({ ...prev, loading: true, error: null }));
     
     try {
+      // Force a new location request each time to ensure we're getting fresh data
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
@@ -35,23 +36,29 @@ export function useGeolocation() {
         });
       });
       
+      // If we got a position, treat it as permission granted regardless of what the browser says
       setLocation({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
         loading: false,
         error: null,
-        permissionState: 'granted',
+        permissionState: 'granted', // Force to granted if we got a position
         requestPermission: async () => await requestGeolocationPermission(),
       });
       
-      // Update permission state
+      // Double-check with the permissions API if available
       if (navigator.permissions && navigator.permissions.query) {
-        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-        setLocation(prev => ({
-          ...prev,
-          permissionState: permissionStatus.state as 'granted' | 'denied' | 'prompt'
-        }));
+        try {
+          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+          setLocation(prev => ({
+            ...prev,
+            permissionState: permissionStatus.state as 'granted' | 'denied' | 'prompt'
+          }));
+        } catch (e) {
+          // If permissions query fails but we got a location, still consider it granted
+          console.log("Permissions query failed but location was obtained");
+        }
       }
     } catch (error) {
       const geoError = error as GeolocationPositionError;
@@ -106,10 +113,13 @@ export function useGeolocation() {
           }));
         });
         
-        // If permission is granted, get location immediately
+        // If permission is already granted, get location immediately
         if (permissionStatus.state === 'granted') {
           requestGeolocationPermission();
         }
+      }).catch(() => {
+        // If permissions query fails, try getting location directly anyway
+        requestGeolocationPermission();
       });
     } else {
       // If permissions API is not available, try getting location directly

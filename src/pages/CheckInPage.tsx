@@ -56,6 +56,7 @@ const CheckInPage = () => {
   const geolocation = useGeolocation();
   const [activeTab, setActiveTab] = useState<string>("manual");
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
+  const [forceReattempt, setForceReattempt] = useState(false);
 
   // Get current date/time in ISO format for the default value
   const currentDateTime = new Date().toISOString().slice(0, 16);
@@ -87,12 +88,20 @@ const CheckInPage = () => {
       if (useLocation && !geolocation.loading && !geolocation.error && geolocation.latitude && geolocation.longitude) {
         setIsLoadingPlaces(true);
         try {
+          console.log("Fetching places at coordinates:", geolocation.latitude, geolocation.longitude);
           const places = await getNearbyPlaces(geolocation.latitude, geolocation.longitude);
+          console.log("Fetched places:", places);
           setNearbyPlaces(places);
           
           // If we successfully got places, switch to the nearby tab
           if (places.length > 0) {
             setActiveTab("nearby");
+          } else {
+            toast({
+              title: "No places found nearby",
+              description: "Try expanding your search area or manually enter venue details.",
+              variant: "destructive",
+            });
           }
         } catch (error) {
           console.error("Error fetching places:", error);
@@ -108,54 +117,63 @@ const CheckInPage = () => {
     };
 
     fetchPlaces();
-  }, [useLocation, geolocation.latitude, geolocation.longitude, geolocation.loading, geolocation.error, toast]);
+  }, [useLocation, geolocation.latitude, geolocation.longitude, geolocation.loading, geolocation.error, toast, forceReattempt]);
 
-  // Check permission state
+  // Check permission state and handle Safari-specific issues
   useEffect(() => {
-    // If permission state becomes known, handle it
-    if (geolocation.permissionState !== 'unknown') {
-      setShowPermissionPrompt(geolocation.permissionState === 'denied');
+    // Safari on iOS sometimes reports incorrect permission state
+    // If we have actual coordinates, treat permission as granted regardless of reported state
+    if (geolocation.latitude !== 0 && geolocation.longitude !== 0 && !geolocation.loading) {
+      setShowPermissionPrompt(false);
       
-      // If permission is granted and useLocation was true, fetch places
-      if (geolocation.permissionState === 'granted' && useLocation) {
-        // Keep using location
-      } else if (geolocation.permissionState === 'denied') {
-        // Reset useLocation if permission is denied
-        setUseLocation(false);
-        setActiveTab("manual");
+      if (useLocation && !isLoadingPlaces && nearbyPlaces.length === 0) {
+        // We have location but no places yet, trigger a fetch
+        const fetchPlaces = async () => {
+          setIsLoadingPlaces(true);
+          try {
+            const places = await getNearbyPlaces(geolocation.latitude, geolocation.longitude);
+            setNearbyPlaces(places);
+            
+            if (places.length > 0) {
+              setActiveTab("nearby");
+            }
+          } catch (error) {
+            console.error("Error fetching places:", error);
+          } finally {
+            setIsLoadingPlaces(false);
+          }
+        };
+        fetchPlaces();
       }
-    }
-  }, [geolocation.permissionState]);
-
-  // Update location toggle handler
-  const handleToggleLocation = async () => {
-    if (geolocation.permissionState === 'prompt' || geolocation.permissionState === 'unknown') {
-      // This will trigger the browser's permission prompt
-      await geolocation.requestPermission();
-      setUseLocation(true);
-    } else if (geolocation.permissionState === 'denied') {
-      // Show guidance for enabling location if permission was denied
+    } else if (geolocation.permissionState === 'denied' && useLocation) {
       setShowPermissionPrompt(true);
-      toast({
-        title: "Location Permission Required",
-        description: (
-          <div className="space-y-2">
-            <p>Please enable location access in your browser settings to use nearby venues.</p>
-            <p className="text-xs text-muted-foreground">You may need to reload the page after enabling permissions.</p>
-          </div>
-        ),
-        variant: "destructive",
-      });
+    } else if (geolocation.error && useLocation) {
+      setShowPermissionPrompt(true);
     } else {
-      // Toggle location use if permission is already granted
-      setUseLocation(!useLocation);
-      if (!useLocation && !geolocation.error) {
-        // Request a fresh location reading
-        await geolocation.requestPermission();
-      } else {
-        setActiveTab("manual");
-      }
+      setShowPermissionPrompt(false);
     }
+  }, [geolocation, useLocation, isLoadingPlaces, nearbyPlaces]);
+
+  // Update location toggle handler with improved Safari support
+  const handleToggleLocation = async () => {
+    // Always try to get location regardless of reported permission state
+    // This works better with Safari which sometimes misreports permission state
+    setUseLocation(true);
+    await geolocation.requestPermission();
+    
+    // Artificial delay to let the browser handle the permission prompt
+    setTimeout(async () => {
+      await geolocation.requestPermission();
+      // Force a re-fetch of places with a new value
+      setForceReattempt(prev => !prev);
+    }, 500);
+  };
+
+  // Force a retry of location detection
+  const handleRetryLocation = async () => {
+    setUseLocation(true);
+    await geolocation.requestPermission();
+    setForceReattempt(prev => !prev);
   };
 
   // Select a place from the nearby places list
@@ -333,51 +351,98 @@ const CheckInPage = () => {
         </CardHeader>
 
         <CardContent>
-          {/* Location Toggle Button with enhanced permission handling */}
+          {/* Enhanced Location Button with better Safari support */}
           <div className="mb-8">
             <Button
               type="button"
               variant={useLocation ? "default" : "outline"}
               className="w-full"
               onClick={handleToggleLocation}
-              disabled={geolocation.loading}
+              disabled={isLoadingPlaces}
             >
-              {geolocation.loading ? (
+              {isLoadingPlaces ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Finding your location...
+                  Finding places nearby...
                 </>
-              ) : useLocation ? (
+              ) : useLocation && geolocation.latitude !== 0 ? (
                 <>
                   <LocateFixed className="mr-2 h-4 w-4" />
-                  Using your location • Tap to disable
+                  Using your location • Tap to refresh
                 </>
               ) : (
                 <>
                   <LocateFixed className="mr-2 h-4 w-4" />
-                  {geolocation.permissionState === 'denied' 
-                    ? 'Enable location services'
-                    : 'Use my current location'}
+                  Find places near me
                 </>
               )}
             </Button>
 
-            {/* Enhanced Permission Status Display */}
+            {/* Location Status & Debug Info */}
+            {useLocation && !isLoadingPlaces && (
+              <div className="mt-2">
+                {geolocation.error ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="text-sm text-destructive flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>Error: Location unavailable</span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="mt-1"
+                      onClick={handleRetryLocation}
+                    >
+                      <LocateFixed className="mr-2 h-3 w-3" />
+                      Retry Getting Location
+                    </Button>
+                  </div>
+                ) : geolocation.latitude !== 0 ? (
+                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>Location found{' '}
+                      {nearbyPlaces.length > 0 && `(${nearbyPlaces.length} places nearby)`}
+                    </span>
+                  </div>
+                ) : geolocation.loading ? (
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Getting your location...</span>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Enhanced Permission Status Display for Safari */}
             {showPermissionPrompt && (
               <Alert 
-                variant="destructive" 
                 className="mt-2 animate-in fade-in-50"
               >
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Location Permission Denied</AlertTitle>
+                <AlertTitle>Location Access Required</AlertTitle>
                 <AlertDescription className="text-xs">
-                  <p>Please enable location services in your browser:</p>
-                  <ol className="list-decimal ml-5 mt-1 space-y-1">
-                    <li>Click the {navigator.userAgent.includes("Safari") ? "AA" : "lock/info"} icon in your browser's address bar</li>
-                    <li>Select "{navigator.userAgent.includes("Safari") ? "Website Settings" : "Site Permissions"}"</li>
-                    <li>Enable "Location" access</li>
-                    <li>Reload this page</li>
-                  </ol>
+                  {navigator.userAgent.includes("Safari") || navigator.userAgent.includes("iPad") ? (
+                    <>
+                      <p>For iPad/Safari users:</p>
+                      <ol className="list-decimal ml-5 mt-1 space-y-1">
+                        <li>Tap "AA" in your address bar</li>
+                        <li>Tap "Website Settings"</li>
+                        <li>Ensure "Location" is set to "Allow"</li>
+                        <li>Reload this page</li>
+                      </ol>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="mt-2"
+                        onClick={handleRetryLocation}
+                      >
+                        <LocateFixed className="mr-2 h-3 w-3" />
+                        Try Again
+                      </Button>
+                    </>
+                  ) : (
+                    <p>Please enable location services in your browser settings and reload the page.</p>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -413,10 +478,12 @@ const CheckInPage = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="nearby" 
-                disabled={!useLocation || geolocation.loading || geolocation.permissionState === 'denied'}
+                disabled={isLoadingPlaces && nearbyPlaces.length === 0}
               >
                 <MapPin className="h-4 w-4 mr-2" />
-                Nearby Places
+                {nearbyPlaces.length > 0 
+                  ? `Nearby Places (${nearbyPlaces.length})` 
+                  : 'Nearby Places'}
               </TabsTrigger>
             </TabsList>
 
@@ -549,19 +616,29 @@ const CheckInPage = () => {
                     <Skeleton className="h-20 w-full" />
                     <Skeleton className="h-20 w-full" />
                   </div>
-                ) : geolocation.permissionState === 'denied' ? (
-                  <Alert className="mb-4">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle className="ml-2">Location permission required</AlertTitle>
-                    <AlertDescription>
-                      You need to enable location permissions in your browser settings to see nearby places.
-                    </AlertDescription>
-                  </Alert>
                 ) : nearbyPlaces.length === 0 ? (
                   <Alert>
                     <AlertTitle>No places found</AlertTitle>
                     <AlertDescription>
-                      No places found nearby. Try expanding the search area or enter venue details manually.
+                      <p>No places found nearby. Try these options:</p>
+                      <div className="flex gap-2 mt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleRetryLocation}
+                        >
+                          <LocateFixed className="mr-2 h-3 w-3" />
+                          Retry
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setActiveTab("manual")}
+                        >
+                          <Building className="mr-2 h-3 w-3" />
+                          Manual Entry
+                        </Button>
+                      </div>
                     </AlertDescription>
                   </Alert>
                 ) : (
