@@ -5,6 +5,7 @@ import { supabase, createCheckIn, VenueType, saveVenue } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { CheckInFormValues } from "@/components/check-in/ManualCheckInForm";
 import { Place } from "@/services/places";
+import { useNavigate } from "react-router-dom";
 
 interface UseCheckInOptions {
   onSuccess?: () => void;
@@ -14,6 +15,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
   const checkInMutation = useMutation({
     mutationFn: async ({ 
@@ -181,6 +183,10 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       }
       
       setIsSubmitting(false);
+      
+      // Navigate to the profile page after successful check-in
+      console.log("Navigating to profile page");
+      navigate("/profile");
       
       // Call the success callback if provided
       if (options?.onSuccess) {

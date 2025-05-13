@@ -1,4 +1,3 @@
-
 import { useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -55,10 +54,11 @@ const CheckInPage = () => {
     fetchNearbyPlaces 
   } = useNearbyPlaces();
   
-  const { isSubmitting, handleCheckIn } = useCheckIn({ 
+  const { isSubmitting, handleCheckIn } = useCheckIn({
     onSuccess: () => {
-      console.log("Check-in completed successfully, navigating to home");
-      navigate("/");
+      console.log("Check-in completed successfully");
+      // We're now handling navigation in the useCheckIn hook,
+      // so we don't need to navigate here anymore
     }
   });
 
@@ -124,9 +124,8 @@ const CheckInPage = () => {
         description: "You must be logged in to check in.",
         variant: "destructive",
       });
-      navigate("/auth");
     }
-  }, [user, toast, navigate]);
+  }, [user, toast]);
 
   return (
     <div className="max-w-lg mx-auto">
