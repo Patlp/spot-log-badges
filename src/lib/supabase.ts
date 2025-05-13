@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 import { debugSupabase } from '@/integrations/supabase/client';
@@ -151,11 +152,11 @@ export const createCheckIn = async (checkInData: {
     console.log("Attempting test insert with:", JSON.stringify(testData, null, 2));
     
     // Use the debugSupabase client for better instrumentation
+    // Removed timeout as it doesn't exist on the PostgrestTransformBuilder type
     const testResult = await debugSupabase
       .from("check_ins")
       .insert(testData)
-      .select()
-      .timeout(5000); // Ensure we get a response within 5 seconds
+      .select();
       
     console.log("Test insert result:", testResult);
     
@@ -168,11 +169,11 @@ export const createCheckIn = async (checkInData: {
     console.log("Test insert succeeded! Now trying actual insert...");
     
     // If test passed, try the real insert with the actual data
+    // Removed timeout as it doesn't exist on the PostgrestTransformBuilder type
     const { data, error } = await debugSupabase
       .from("check_ins")
       .insert([minimalPayload])
-      .select()
-      .timeout(5000);
+      .select();
 
     if (error) {
       console.error("ACTUAL INSERT FAILED:", error);

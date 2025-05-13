@@ -19,8 +19,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Export an instrumented version of supabase with better logging
 // It wraps the original client but adds extensive logging
 export const debugSupabase = {
-  // Wrap the from method to add instrumentation
-  from: (table: string) => {
+  // Type-safe from method for known tables
+  from: <T extends keyof Database['public']['Tables']>(
+    table: T
+  ) => {
     console.log(`DEBUG: Creating query for table "${table}"`);
     const query = supabase.from(table);
     
