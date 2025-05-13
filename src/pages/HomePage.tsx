@@ -1,4 +1,3 @@
-
 import { useContext, useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -28,11 +27,21 @@ const HomePage = () => {
     setWelcomeMessage(getWelcomeMessage());
   }, [getWelcomeMessage]);
 
-  const { data: checkIns, isLoading } = useQuery({
+  const { data: checkIns, isLoading, refetch: refetchCheckIns } = useQuery({
     queryKey: ["allCheckIns"],
     queryFn: () => getAllCheckIns(20),
     staleTime: 60000, // Add staleTime to reduce frequent refetches
   });
+
+  // Refresh check-ins when focused to ensure we have the latest avatar updates
+  useEffect(() => {
+    const onFocus = () => {
+      refetchCheckIns();
+    };
+    
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refetchCheckIns]);
 
   // Get a user's initials for the avatar fallback
   const getInitials = (username?: string) => {

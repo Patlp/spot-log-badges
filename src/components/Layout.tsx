@@ -1,15 +1,18 @@
 
 import { Outlet, useLocation, Link } from "react-router-dom";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AuthContext } from "../App";
 import { Button } from "@/components/ui/button";
 import { MapPin, User, Trophy, Home, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getProfile } from "@/lib/supabase";
 
 const Layout = () => {
   const { user, signOut } = useContext(AuthContext);
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -17,6 +20,31 @@ const Layout = () => {
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      const fetchProfile = async () => {
+        try {
+          const profileData = await getProfile(user.id);
+          setProfile(profileData);
+        } catch (error) {
+          console.error("Error fetching profile:", error);
+        }
+      };
+      
+      fetchProfile();
+    }
+  }, [user?.id, location.pathname]);
+
+  const getInitials = (username?: string) => {
+    if (!username) return "U";
+    return username
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
   };
 
   const navItems = [
@@ -56,15 +84,22 @@ const Layout = () => {
               ))}
 
               {user && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={signOut}
-                  className="ml-4"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Link to="/profile" className="flex items-center">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback>{getInitials(profile?.username)}</AvatarFallback>
+                    </Avatar>
+                  </Link>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={signOut}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </div>
               )}
             </nav>
 
@@ -102,6 +137,16 @@ const Layout = () => {
                   {item.label}
                 </Link>
               ))}
+
+              {user && (
+                <div className="flex items-center space-x-2 px-3 py-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.avatar_url || ''} />
+                    <AvatarFallback>{getInitials(profile?.username)}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium">{profile?.username}</span>
+                </div>
+              )}
 
               {user && (
                 <Button 

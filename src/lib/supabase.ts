@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -14,7 +13,31 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Define the types for venue types
+// Create storage bucket for avatars if it doesn't exist
+const initStorage = async () => {
+  try {
+    // Check if avatars bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+
+    if (!avatarBucketExists) {
+      // Create avatars bucket
+      await supabase.storage.createBucket('avatars', {
+        public: true,
+        fileSizeLimit: 5242880, // 5MB
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif']
+      });
+      console.log('Created avatars storage bucket');
+    }
+  } catch (error) {
+    console.error('Error initializing storage:', error);
+  }
+};
+
+// Initialize storage on load
+initStorage();
+
+// Define the venue type as a string literal union type for proper type checking
 export type VenueType = "Restaurant" | "Bar" | "Club" | "Event" | "Other";
 
 // Function to get user profile
@@ -30,6 +53,48 @@ export const getProfile = async (userId: string) => {
     return data;
   } catch (error) {
     console.error("Error getting profile:", error);
+    throw error;
+  }
+};
+
+// Function to update user profile
+export const updateProfile = async (userId: string, updates: { username?: string; avatar_url?: string }) => {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", userId)
+      .select();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    throw error;
+  }
+};
+
+// Function to upload avatar
+export const uploadAvatar = async (userId: string, file: File) => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    
+    // Upload file
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file);
+    
+    if (uploadError) throw uploadError;
+    
+    // Get public URL
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+    
+    return data.publicUrl;
+  } catch (error) {
+    console.error("Error uploading avatar:", error);
     throw error;
   }
 };
@@ -108,18 +173,18 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in - SIMPLIFIED with standard Supabase client
+// Function to create a check-in - Fixed type issue with venue_type and added improved logging
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
-  venue_type: VenueType;
+  venue_type: string;
   location: string;
   check_in_time: string;
   notes?: string;
 }) => {
   try {
-    console.log("=== CREATING CHECK-IN (DIRECT IMPLEMENTATION) ===");
-    console.log("Check-in started", { testData: checkInData });
+    console.log("=== CREATING CHECK-IN (IMPROVED IMPLEMENTATION) ===");
+    console.log("Check-in started", checkInData);
     
     // Validate required fields
     if (!checkInData.user_id) throw new Error("Missing user_id");
@@ -128,8 +193,14 @@ export const createCheckIn = async (checkInData: {
     if (!checkInData.location) throw new Error("Missing location");
     if (!checkInData.check_in_time) throw new Error("Missing check_in_time");
     
+    // Validate venue_type is one of the allowed values
+    const venueTypeValues: string[] = ["Restaurant", "Bar", "Club", "Event", "Other"];
+    if (!venueTypeValues.includes(checkInData.venue_type)) {
+      throw new Error(`Invalid venue_type. Must be one of: ${venueTypeValues.join(', ')}`);
+    }
+    
     // Create a clean payload with only the needed fields
-    const payload = {
+    const testData = {
       user_id: checkInData.user_id,
       venue_name: checkInData.venue_name,
       venue_type: checkInData.venue_type,
@@ -138,19 +209,19 @@ export const createCheckIn = async (checkInData: {
       notes: checkInData.notes || null,
     };
     
-    console.log("Using payload:", JSON.stringify(payload, null, 2));
+    console.log("Check-in started", { testData });
     
-    // Simple and direct insert using EXACTLY the requested structure
+    // Insert with proper error handling using the exact structure requested
     const { data, error } = await supabase
       .from("check_ins")
-      .insert([payload])
+      .insert([testData])
       .select();
     
     console.log("Insert result:", { data, error });
     
     if (error) {
       console.error("Insert failed with error:", error);
-      throw error;
+      throw new Error(error.message || "Failed to create check-in");
     }
     
     if (!data || data.length === 0) {
@@ -159,6 +230,23 @@ export const createCheckIn = async (checkInData: {
     }
     
     console.log("Insert succeeded:", data);
+    
+    // Also update the user's check-in count in the profile
+    try {
+      const { error: updateError } = await supabase.rpc('increment_check_in_count', {
+        user_id_param: checkInData.user_id,
+        venue_name_param: checkInData.venue_name
+      });
+      
+      if (updateError) {
+        console.warn("Failed to update profile check-in count:", updateError);
+        // Don't throw here, just log the warning
+      }
+    } catch (updateError) {
+      console.warn("Error updating profile after check-in:", updateError);
+      // Don't throw here, the check-in was successful
+    }
+    
     return data[0];
     
   } catch (error: any) {
