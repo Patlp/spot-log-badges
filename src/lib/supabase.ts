@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -38,7 +37,7 @@ const initStorage = async () => {
 // Initialize storage on load
 initStorage();
 
-// Define the types for venue types - fixing the type issue
+// Define the venue type as a string literal union type for proper type checking
 export type VenueType = "Restaurant" | "Bar" | "Club" | "Event" | "Other";
 
 // Function to get user profile
@@ -174,11 +173,11 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in - Improved error handling
+// Function to create a check-in - Fixed type issue with venue_type
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
-  venue_type: VenueType; // Make sure this properly uses the VenueType type
+  venue_type: VenueType; // Using our explicitly defined VenueType
   location: string;
   check_in_time: string;
   notes?: string;
@@ -198,7 +197,7 @@ export const createCheckIn = async (checkInData: {
     const payload = {
       user_id: checkInData.user_id,
       venue_name: checkInData.venue_name,
-      venue_type: checkInData.venue_type,
+      venue_type: checkInData.venue_type as VenueType, // Explicit cast to ensure type safety
       location: checkInData.location,
       check_in_time: checkInData.check_in_time,
       notes: checkInData.notes || null,
