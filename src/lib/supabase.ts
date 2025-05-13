@@ -1,23 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from '@/integrations/supabase/types';
 import rawSupabase from "./rawSupabaseClient";
 
 // Get the Supabase URL and Anon Key from the environment
 const supabaseUrl = "https://rtbicjimopzlqpodwjcm.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0Ymljamltb3B6bHFwb2R3amNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMzU3OTQsImV4cCI6MjA2MjcxMTc5NH0.YIkf-O5N0nq1f41ybefYu6Eey7qOOhusdCamjLbJHJM";
 
-// Create a simpler type that directly allows string table names
-type CustomSupabaseClient = {
-  from: (table: string) => any;
-} & ReturnType<typeof createClient<Database>>;
-
-// Create a single supabase client for interacting with your database
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+// Create a supabase client with no type bindings
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true
   },
-}) as CustomSupabaseClient;
+});
 
 // Create storage bucket for avatars if it doesn't exist
 const initStorage = async () => {
@@ -217,8 +211,8 @@ export const createCheckIn = async (checkInData: {
     
     console.log("Check-in data prepared:", testData);
     
-    // Using the rawSupabase client to bypass type checking
-    const { data, error } = await rawSupabase
+    // Using direct table name with no type binding
+    const { data, error } = await supabase
       .from("check_ins")
       .insert([testData])
       .select();
