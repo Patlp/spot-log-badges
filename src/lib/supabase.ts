@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
-import { debugSupabase } from '@/integrations/supabase/client';
 
 // Get the Supabase URL and Anon Key from the environment
 const supabaseUrl = "https://rtbicjimopzlqpodwjcm.supabase.co";
@@ -108,7 +107,7 @@ export const getLeaderboard = async () => {
   }
 };
 
-// Function to create a check-in - FIXED with better error handling and simplified approach
+// Function to create a check-in - SIMPLIFIED with standard Supabase client
 export const createCheckIn = async (checkInData: {
   user_id: string;
   venue_name: string;
@@ -118,7 +117,7 @@ export const createCheckIn = async (checkInData: {
   notes?: string;
 }) => {
   try {
-    console.log("=== CREATING CHECK-IN (FIXED VERSION) ===");
+    console.log("=== CREATING CHECK-IN (SIMPLIFIED VERSION) ===");
     console.log("Full payload:", JSON.stringify(checkInData, null, 2));
     
     // Validate required fields
@@ -128,56 +127,32 @@ export const createCheckIn = async (checkInData: {
     if (!checkInData.location) throw new Error("Missing location");
     if (!checkInData.check_in_time) throw new Error("Missing check_in_time");
     
-    // Create a minimal payload with only required fields
-    const minimalPayload = {
+    // Create a clean payload with only the needed fields
+    const payload = {
       user_id: checkInData.user_id,
       venue_name: checkInData.venue_name,
       venue_type: checkInData.venue_type,
       location: checkInData.location,
       check_in_time: checkInData.check_in_time,
+      notes: checkInData.notes || null,
     };
     
-    console.log("Using minimal payload:", JSON.stringify(minimalPayload, null, 2));
+    console.log("Using clean payload:", JSON.stringify(payload, null, 2));
     
-    // DIRECT TEST - Insert a hardcoded check-in first to see if the basic connection works
-    const testData = {
-      user_id: checkInData.user_id, // Use real user ID for RLS
-      venue_name: "TEST VENUE RECORD",
-      venue_type: "Other" as VenueType,
-      location: "Test Location",
-      check_in_time: new Date().toISOString(),
-    };
-    
-    console.log("Attempting test insert with:", JSON.stringify(testData, null, 2));
-    
-    // Use the debugSupabase client for better instrumentation
-    const testResult = await debugSupabase
+    // Simple and direct insert using the standard client
+    const { data, error } = await supabase
       .from("check_ins")
-      .insert(testData)
+      .insert([payload])
       .select();
-      
-    console.log("Test insert result:", testResult);
     
-    if (testResult.error) {
-      console.error("TEST FAILED:", testResult.error);
-      // Return the test error to surface it
-      throw new Error(`Test insert failed: ${testResult.error.message || 'Unknown error'}`);
-    }
+    console.log("Check-in result:", { data, error });
     
-    console.log("Test insert succeeded! Now trying actual insert...");
-    
-    // If test passed, try the real insert with the actual data
-    const { data, error } = await debugSupabase
-      .from("check_ins")
-      .insert([minimalPayload])
-      .select();
-
     if (error) {
-      console.error("ACTUAL INSERT FAILED:", error);
+      console.error("Insert failed:", error);
       throw error;
     }
     
-    console.log("ACTUAL INSERT SUCCEEDED:", data);
+    console.log("Insert succeeded:", data);
     return data && data.length > 0 ? data[0] : null;
     
   } catch (error: any) {

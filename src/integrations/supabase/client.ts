@@ -6,61 +6,10 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://rtbicjimopzlqpodwjcm.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0Ymljamltb3B6bHFwb2R3amNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMzU3OTQsImV4cCI6MjA2MjcxMTc5NH0.YIkf-O5N0nq1f41ybefYu6Eey7qOOhusdCamjLbJHJM";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
+// Create the Supabase client
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true
   },
 });
-
-// Export an instrumented version of supabase with better logging
-// It wraps the original client but adds extensive logging
-export const debugSupabase = {
-  // Type-safe from method that accepts both typed and string parameters
-  from: (table: keyof Database['public']['Tables'] | string) => {
-    console.log(`DEBUG: Creating query for table "${table}"`);
-    const query = supabase.from(table as any);
-    
-    // Enhanced insert method with better error handling
-    const originalInsert = query.insert;
-    query.insert = function(values: any, options?: any) {
-      console.log(`DEBUG: Inserting into "${table}" with payload:`, JSON.stringify(values, null, 2));
-      
-      // Call the original method but with enhanced promise handling
-      const result = originalInsert.call(this, values, options);
-      
-      // Ensure we're correctly handling the promise resolution
-      const enhancedResult = {
-        ...result,
-        then: function(onfulfilled: any, onrejected: any) {
-          console.log(`DEBUG: Setting up promise handlers for "${table}" insert`);
-          return result.then(
-            (data) => {
-              console.log(`DEBUG: Insert into "${table}" resolved with:`, data);
-              return onfulfilled ? onfulfilled(data) : data;
-            },
-            (error) => {
-              console.error(`DEBUG: Insert into "${table}" rejected with:`, error);
-              return onrejected ? onrejected(error) : Promise.reject(error);
-            }
-          );
-        },
-        catch: function(onrejected: any) {
-          console.log(`DEBUG: Setting up error handler for "${table}" insert`);
-          return result.catch((error) => {
-            console.error(`DEBUG: Insert into "${table}" caught error:`, error);
-            return onrejected ? onrejected(error) : Promise.reject(error);
-          });
-        }
-      };
-      
-      return enhancedResult;
-    };
-    
-    return query;
-  },
-  auth: supabase.auth
-};

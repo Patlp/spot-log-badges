@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
 import { createCheckIn, VenueType, saveVenue } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { CheckInFormValues } from "@/components/check-in/ManualCheckInForm";
@@ -65,24 +64,15 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           }
         }
         
-        // Create the check-in with a timeout
+        // Create the check-in
         console.log("Creating check-in with data:", checkInData);
-        const checkInResult = await Promise.race([
-          createCheckIn(checkInData),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Check-in timeout after 10s")), 10000)
-          )
-        ]);
+        const checkInResult = await createCheckIn(checkInData);
         
         console.log("Check-in created successfully:", checkInResult);
         return { success: true, data: checkInResult };
       } catch (error: any) {
         console.error("Check-in process error:", error);
-        console.error("Error type:", typeof error);
         console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
-        if (error.code) console.error("Error code:", error.code);
-        if (error.details) console.error("Error details:", error.details);
         throw error;
       }
     },
