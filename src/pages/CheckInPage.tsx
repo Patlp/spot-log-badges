@@ -1,4 +1,3 @@
-
 import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -14,7 +13,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { MapPin, Save, Clock, Loader2, MapIcon, LocateFixed, Search, Building } from "lucide-react";
+import { MapPin, Save, Clock, Loader2, MapIcon, LocateFixed, Search, Building, AlertTriangle } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { getNearbyPlaces, mapGoogleTypeToVenueType } from "@/services/places";
@@ -105,14 +104,30 @@ const CheckInPage = () => {
     fetchPlaces();
   }, [useLocation, geolocation, toast]);
 
-  // Toggle location usage
+  // Update location toggle handler
   const handleToggleLocation = () => {
+    if (geolocation.permissionState === 'denied') {
+      // Show guidance for enabling location if permission was denied
+      toast({
+        title: "Location Permission Required",
+        description: (
+          <div className="space-y-2">
+            <p>Please enable location access in your browser settings to use nearby venues.</p>
+            <p className="text-xs text-muted-foreground">You may need to reload the page after enabling permissions.</p>
+          </div>
+        ),
+        variant: "destructive",
+      });
+      
+      return;
+    }
+    
     setUseLocation(!useLocation);
     if (!useLocation) {
       setActiveTab("nearby");
       if (geolocation.error) {
         toast({
-          title: "Location Error",
+          title: "Location Issue",
           description: geolocation.error,
           variant: "destructive",
         });
@@ -297,7 +312,7 @@ const CheckInPage = () => {
         </CardHeader>
 
         <CardContent>
-          {/* Location Toggle Button */}
+          {/* Location Toggle Button with enhanced error states */}
           <div className="mb-8">
             <Button
               type="button"
@@ -324,13 +339,35 @@ const CheckInPage = () => {
               )}
             </Button>
 
-            {/* Location Status */}
-            {useLocation && (
+            {/* Enhanced Location Status Display */}
+            {(useLocation || geolocation.permissionState === 'denied') && (
               <div className="mt-2">
                 {geolocation.error ? (
-                  <Alert variant="destructive" className="mt-2">
-                    <AlertTitle>Location Error</AlertTitle>
-                    <AlertDescription>{geolocation.error}</AlertDescription>
+                  <Alert 
+                    variant="destructive" 
+                    className="mt-2 animate-in fade-in-50"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle className="ml-2">
+                      {geolocation.permissionState === 'denied' 
+                        ? 'Location Permission Denied' 
+                        : 'Location Error'}
+                    </AlertTitle>
+                    <AlertDescription className="text-sm">
+                      {geolocation.permissionState === 'denied' ? (
+                        <>
+                          <p>Please enable location services in your browser settings to use this feature.</p>
+                          <ol className="list-decimal ml-5 mt-2 text-xs">
+                            <li>Click the lock/info icon in your browser's address bar</li>
+                            <li>Find site permissions or location settings</li>
+                            <li>Allow access to your location</li>
+                            <li>Reload this page</li>
+                          </ol>
+                        </>
+                      ) : (
+                        geolocation.error
+                      )}
+                    </AlertDescription>
                   </Alert>
                 ) : geolocation.loading ? (
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground mt-2">
@@ -355,7 +392,7 @@ const CheckInPage = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="nearby" 
-                disabled={!useLocation || geolocation.loading || !!geolocation.error}
+                disabled={!useLocation || geolocation.loading || geolocation.permissionState === 'denied'}
               >
                 <MapPin className="h-4 w-4 mr-2" />
                 Nearby Places
@@ -480,7 +517,7 @@ const CheckInPage = () => {
               </Form>
             </TabsContent>
 
-            {/* Nearby Places Tab */}
+            {/* Nearby Places Tab with enhanced error handling */}
             <TabsContent value="nearby" className="pt-4">
               <div className="mb-4">
                 <h3 className="text-lg font-medium mb-3">Select a place to check in</h3>
@@ -491,6 +528,14 @@ const CheckInPage = () => {
                     <Skeleton className="h-20 w-full" />
                     <Skeleton className="h-20 w-full" />
                   </div>
+                ) : geolocation.permissionState === 'denied' ? (
+                  <Alert className="mb-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle className="ml-2">Location permission required</AlertTitle>
+                    <AlertDescription>
+                      You need to enable location permissions in your browser settings to see nearby places.
+                    </AlertDescription>
+                  </Alert>
                 ) : nearbyPlaces.length === 0 ? (
                   <Alert>
                     <AlertTitle>No places found</AlertTitle>
