@@ -97,8 +97,8 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       
       // Check for badge in the response to show in toast
       let badgeMsg = "";
-      if (data && data.data && data.data.badge) {
-        badgeMsg = `Badge earned: ${data.data.badge.badge_type.replace('_', ' ')}!`;
+      if (data?.data?.newBadge) {
+        badgeMsg = `Badge earned: ${data.data.newBadge.badge_type.replace('_', ' ')}!`;
       }
       
       // Determine venue name from data

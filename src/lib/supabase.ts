@@ -162,6 +162,8 @@ export const createCheckIn = async (checkInData: {
     const checkIn = data[0];
     console.log("Processing badges for check-in:", checkIn);
     
+    let newBadge = null;
+    
     try {
       // Check if this is the user's first check-in at this venue
       const { data: prevCheckIns, error: checkInError } = await supabase
@@ -196,6 +198,9 @@ export const createCheckIn = async (checkInData: {
             console.error("Error awarding badge:", badgeError);
           } else {
             console.log("Badge awarded:", badgeResult);
+            if (badgeResult && badgeResult.length > 0) {
+              newBadge = badgeResult[0];
+            }
           }
         } else {
           // Check if this is their 3rd+ check-in at this venue, award a "regular" badge
@@ -234,6 +239,9 @@ export const createCheckIn = async (checkInData: {
                 console.error("Error awarding regular badge:", badgeError);
               } else {
                 console.log("Regular badge awarded:", badgeResult);
+                if (badgeResult && badgeResult.length > 0) {
+                  newBadge = badgeResult[0];
+                }
               }
             }
           }
@@ -288,8 +296,14 @@ export const createCheckIn = async (checkInData: {
       // Just log the error and continue
     }
     
-    console.log("Check-in completed successfully:", data[0]);
-    return data[0];
+    // Return the check-in data with the badge if one was awarded
+    const result = {
+      ...checkIn,
+      newBadge
+    };
+    
+    console.log("Check-in completed successfully:", result);
+    return result;
     
   } catch (error: any) {
     console.error("Final createCheckIn error:", error);
