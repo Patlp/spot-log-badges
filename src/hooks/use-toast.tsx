@@ -14,11 +14,7 @@ import { useToast as useToastOrig } from "@/components/ui/use-toast"
 export const useToast = useToastOrig;
 
 // Add direct toast function for easier access in components
-export function toast(props: { title?: string; description?: string; variant?: "default" | "destructive" | "warning", duration?: number }) {
+export function toast(props: { title?: string; description?: string; variant?: "default" | "destructive" | "warning" }) {
   const { toast: toastFn } = useToastOrig();
-  return toastFn({
-    ...props,
-    // Default duration of 5000ms (5 seconds) if not specified
-    duration: props.duration ?? 5000,
-  });
+  return toastFn(props);
 }
