@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 
 // Get the Supabase URL and Anon Key from the environment
@@ -11,10 +12,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true
   },
   global: {
-    // Fixed TypeScript error with the spread operator by using proper fetch syntax
-    fetch: (...args) => {
-      console.log("Supabase fetch:", args[0]);
-      return fetch(...args);
+    // Fixed TypeScript error by properly typing the fetch parameters
+    fetch: (url: RequestInfo | URL, options?: RequestInit) => {
+      console.log("Supabase fetch:", url);
+      return fetch(url, options);
     },
   },
 });
