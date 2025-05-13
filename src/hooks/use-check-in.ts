@@ -88,19 +88,19 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           
           console.log("[useCheckIn] Check-in completed successfully:", resultData);
           return resultData[0];
-        } catch (insertError: any) { // Fixed: explicitly typing the error as any
-          console.error("[useCheckIn] Check-in insert error:", insertError);
+        } catch (e: any) { // Fixed line: explicitly typing the error as any
+          console.error("[useCheckIn] Check-in insert error:", e);
           console.error("[useCheckIn] Error details:", {
-            message: insertError.message,
-            code: insertError.code,
-            details: insertError.details,
-            hint: insertError.hint,
-            stack: insertError.stack
+            message: e.message,
+            code: e.code,
+            details: e.details,
+            hint: e.hint,
+            stack: e.stack
           });
           
           // Alert for immediate feedback during debugging
-          alert("Check-in failed: " + (insertError.message || "Unknown error"));
-          throw insertError;
+          alert("Check-in failed: " + (e.message || "Unknown error"));
+          throw e;
         }
       } catch (error: any) { // Fixed: explicitly typing the error as any
         console.error("[useCheckIn] Check-in process error:", error);
