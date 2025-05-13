@@ -1,5 +1,5 @@
 
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +56,10 @@ const CheckInPage = () => {
   } = useNearbyPlaces();
   
   const { isSubmitting, handleCheckIn } = useCheckIn({ 
-    onSuccess: () => navigate("/") 
+    onSuccess: () => {
+      console.log("Check-in completed successfully, navigating to home");
+      navigate("/");
+    }
   });
 
   // Update form when a place is selected
@@ -76,21 +79,21 @@ const CheckInPage = () => {
   }, [selectedPlace, form]);
   
   // Force a retry of location and place fetching
-  const handleRetryFetchPlaces = async () => {
+  const handleRetryFetchPlaces = useCallback(async () => {
     if (locationCoords) {
       fetchNearbyPlaces(locationCoords.lat, locationCoords.lng);
     } else {
       handleToggleLocation();
     }
-  };
+  }, [locationCoords, fetchNearbyPlaces, handleToggleLocation]);
 
   // Switch to manual entry tab
-  const handleSwitchToManual = () => {
+  const handleSwitchToManual = useCallback(() => {
     setActiveTab("manual");
-  };
+  }, []);
 
   // Submit handler for the form
-  const onSubmit = (data: CheckInFormValues) => {
+  const onSubmit = useCallback((data: CheckInFormValues) => {
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -100,8 +103,30 @@ const CheckInPage = () => {
       return;
     }
     
-    handleCheckIn(data, user.id, selectedPlace);
-  };
+    console.log("Submitting check-in data:", data);
+    try {
+      handleCheckIn(data, user.id, selectedPlace);
+    } catch (error) {
+      console.error("Error during check-in submission:", error);
+      toast({
+        title: "Check-in Failed",
+        description: "There was an error processing your check-in. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [user, handleCheckIn, selectedPlace, toast]);
+
+  // Verify user authentication
+  useEffect(() => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to check in.",
+        variant: "destructive",
+      });
+      navigate("/auth");
+    }
+  }, [user, toast, navigate]);
 
   return (
     <div className="max-w-lg mx-auto">

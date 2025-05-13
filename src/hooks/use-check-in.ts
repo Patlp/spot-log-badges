@@ -25,8 +25,6 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       userId: string; 
       selectedPlace: Place | null 
     }) => {
-      setIsSubmitting(true);
-      
       try {
         // Create the check-in
         const checkInData = {
@@ -41,16 +39,13 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         if (selectedPlace) {
           // Store the venue in our venues table for future reference
           try {
-            // We don't need to wait for this to complete
-            await Promise.resolve().then(async () => {
-              await saveVenue({
-                place_id: selectedPlace.place_id,
-                name: selectedPlace.name,
-                address: selectedPlace.address,
-                types: selectedPlace.types,
-                latitude: selectedPlace.latitude,
-                longitude: selectedPlace.longitude,
-              });
+            await saveVenue({
+              place_id: selectedPlace.place_id,
+              name: selectedPlace.name,
+              address: selectedPlace.address,
+              types: selectedPlace.types,
+              latitude: selectedPlace.latitude,
+              longitude: selectedPlace.longitude,
             });
           } catch (venueError) {
             console.error("Venue storage error:", venueError);
@@ -138,9 +133,13 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           
           return { badgeEarned: null };
         }
-      } finally {
-        setIsSubmitting(false);
+      } catch (error) {
+        console.error("Check-in process error:", error);
+        throw error;
       }
+    },
+    onMutate: () => {
+      setIsSubmitting(true);
     },
     onSuccess: (data, variables) => {
       // Invalidate queries to refetch data
@@ -163,6 +162,8 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         });
       }
       
+      setIsSubmitting(false);
+      
       // Call the success callback if provided
       if (options?.onSuccess) {
         options.onSuccess();
@@ -175,6 +176,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         description: error.message || "There was a problem with your check-in. Please try again.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
     },
   });
 

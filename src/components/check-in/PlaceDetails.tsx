@@ -9,6 +9,7 @@ import { Loader2, MapPin } from "lucide-react";
 import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
+import { toast } from "@/hooks/use-toast";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -23,9 +24,26 @@ export function PlaceDetails({
   isSubmitting,
   onSubmit
 }: PlaceDetailsProps) {
+  const [submitted, setSubmitted] = useState(false);
+  
+  const handleSubmit = (values: any) => {
+    setSubmitted(true);
+    try {
+      onSubmit(values);
+    } catch (error) {
+      console.error("Error in check-in submission:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem processing your check-in. Please try again.",
+        variant: "destructive"
+      });
+      setSubmitted(false);
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 border-t pt-4 mt-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 border-t pt-4 mt-4">
         <div className="flex justify-between items-center">
           <div>
             <h3 className="font-medium">{selectedPlace.name}</h3>
@@ -69,7 +87,7 @@ export function PlaceDetails({
 
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || submitted}
           className="w-full"
         >
           {isSubmitting ? (

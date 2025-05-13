@@ -6,75 +6,103 @@ const supabaseUrl = "https://rtbicjimopzlqpodwjcm.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0Ymljamltb3B6bHFwb2R3amNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMzU3OTQsImV4cCI6MjA2MjcxMTc5NH0.YIkf-O5N0nq1f41ybefYu6Eey7qOOhusdCamjLbJHJM";
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  persistSession: true,
+  autoRefreshToken: true,
+});
 
 // Define the types for venue types
 export type VenueType = "Restaurant" | "Bar" | "Club" | "Event" | "Other";
 
 // Function to get user profile
 export const getProfile = async (userId: string) => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error getting profile:", error);
+    throw error;
+  }
 };
 
 // Function to get user check-ins
 export const getCheckIns = async (userId: string, limit = 5) => {
-  const { data, error } = await supabase
-    .from("check_ins")
-    .select("*")
-    .eq("user_id", userId)
-    .order("check_in_time", { ascending: false })
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from("check_ins")
+      .select("*")
+      .eq("user_id", userId)
+      .order("check_in_time", { ascending: false })
+      .limit(limit);
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error getting check-ins:", error);
+    throw error;
+  }
 };
 
 // Function to get user badges
 export const getUserBadges = async (userId: string) => {
-  const { data, error } = await supabase
-    .from("badges")
-    .select("*")
-    .eq("user_id", userId)
-    .order("earned_at", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("badges")
+      .select("*")
+      .eq("user_id", userId)
+      .order("earned_at", { ascending: false });
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error getting badges:", error);
+    throw error;
+  }
 };
 
 // Function to get all recent check-ins with profile information
 export const getAllCheckIns = async (limit = 10) => {
-  const { data, error } = await supabase
-    .from("check_ins")
-    .select(`
-      *,
-      profiles (
-        username,
-        avatar_url
-      )
-    `)
-    .order("check_in_time", { ascending: false })
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from("check_ins")
+      .select(`
+        *,
+        profiles (
+          username,
+          avatar_url
+        )
+      `)
+      .order("check_in_time", { ascending: false })
+      .limit(limit);
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error getting all check-ins:", error);
+    throw error;
+  }
 };
 
 // Function to get leaderboard
 export const getLeaderboard = async () => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("total_check_ins", { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("total_check_ins", { ascending: false });
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error getting leaderboard:", error);
+    throw error;
+  }
 };
 
 // Function to create a check-in
@@ -86,14 +114,24 @@ export const createCheckIn = async (checkInData: {
   check_in_time: string;
   notes?: string;
 }) => {
-  const { data, error } = await supabase
-    .from("check_ins")
-    .insert([checkInData])
-    .select()
-    .single();
+  try {
+    console.log("Creating check-in with data:", checkInData);
+    const { data, error } = await supabase
+      .from("check_ins")
+      .insert([checkInData])
+      .select()
+      .single();
 
-  if (error) throw error;
-  return data;
+    if (error) {
+      console.error("Error creating check-in:", error);
+      throw error;
+    }
+    console.log("Check-in created successfully:", data);
+    return data;
+  } catch (error) {
+    console.error("Error in createCheckIn function:", error);
+    throw error;
+  }
 };
 
 // Function to check for nearby venues in database
@@ -124,7 +162,7 @@ export const getNearbyVenues = async (latitude: number, longitude: number, radiu
         const distance = calculateDistance(
           latitude, 
           longitude, 
-          Number(venue.latitude),  // Convert from numeric to number if needed
+          Number(venue.latitude),
           Number(venue.longitude)
         );
         return { ...venue, distance };
@@ -159,7 +197,9 @@ export const saveVenue = async (venueData: {
   longitude: number;
 }) => {
   try {
-    // Get the current user session
+    console.log("Saving venue data:", venueData);
+    
+    // Check if user is authenticated
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
     
@@ -169,15 +209,17 @@ export const saveVenue = async (venueData: {
     
     const { error } = await supabase
       .from("venues")
-      .upsert([venueData], { onConflict: 'place_id' });
+      .upsert([venueData], { onConflict: 'place_id', ignoreDuplicates: false });
       
     if (error) {
       console.error("Error saving venue:", error);
       // Don't throw error, just log it
+    } else {
+      console.log("Venue saved successfully");
     }
     return true;
   } catch (error) {
-    console.error("Error saving venue:", error);
+    console.error("Error in saveVenue function:", error);
     // Don't throw error, just return false
     return false;
   }
