@@ -132,7 +132,7 @@ interface ToastReturn {
   update: (props: ToasterToast) => void;
 }
 
-function toast({ ...props }: Toast): ToastReturn {
+function toast(props: Toast): ToastReturn {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -146,7 +146,6 @@ function toast({ ...props }: Toast): ToastReturn {
     type: actionTypes.ADD_TOAST,
     toast: {
       ...props,
-      id,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
