@@ -1,122 +1,96 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-// These environment variables are set by Lovable when you integrate with Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Get the Supabase URL and Anon Key from the environment
+const supabaseUrl = "https://rtbicjimopzlqpodwjcm.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0Ymljamltb3B6bHFwb2R3amNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMzU3OTQsImV4cCI6MjA2MjcxMTc5NH0.YIkf-O5N0nq1f41ybefYu6Eey7qOOhusdCamjLbJHJM";
 
-// Use a dummy URL and key if not provided
-// This allows the app to at least load, though Supabase functionality won't work
-const fallbackUrl = 'https://placeholder-project.supabase.co';
-const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyLXByb2plY3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYxNjQyMjU1MCwiZXhwIjoxOTMyMDg0NTUwfQ.placeholder-key';
+// Create a single supabase client for interacting with your database
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase credentials. Make sure you have integrated Supabase with your Lovable project and refreshed the page.');
-}
+// Define the types for venue types
+export type VenueType = "Restaurant" | "Bar" | "Club" | "Event" | "Other";
 
-export const supabase = createClient(
-  supabaseUrl || fallbackUrl,
-  supabaseAnonKey || fallbackKey
-);
-
-// Type definitions for our database schema
-export type VenueType = 'Bar' | 'Restaurant' | 'Club' | 'Event' | 'Other';
-
-export interface CheckIn {
-  id: number;
-  user_id: string;
-  venue_name: string;
-  venue_type: VenueType;
-  location: string;
-  check_in_time: string;
-  notes?: string;
-  created_at: string;
-}
-
-export interface Badge {
-  id: number;
-  user_id: string;
-  venue_name: string;
-  badge_type: string;
-  earned_at: string;
-  icon: string;
-}
-
-export interface Profile {
-  id: string;
-  username: string;
-  avatar_url?: string;
-  created_at: string;
-  total_check_ins: number;
-  total_badges: number;
-  unique_venues: number;
-}
-
-// Helper functions for data access
+// Function to get user profile
 export const getProfile = async (userId: string) => {
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
     .single();
 
   if (error) throw error;
-  return data as Profile;
+  return data;
 };
 
+// Function to get user check-ins
 export const getCheckIns = async (userId: string, limit = 5) => {
   const { data, error } = await supabase
-    .from('check_ins')
-    .select('*')
-    .eq('user_id', userId)
-    .order('check_in_time', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return data as CheckIn[];
-};
-
-export const getUserBadges = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('badges')
-    .select('*')
-    .eq('user_id', userId)
-    .order('earned_at', { ascending: false });
-
-  if (error) throw error;
-  return data as Badge[];
-};
-
-export const getAllCheckIns = async (limit = 20) => {
-  const { data, error } = await supabase
-    .from('check_ins')
-    .select(`
-      *,
-      profiles:user_id (username, avatar_url)
-    `)
-    .order('check_in_time', { ascending: false })
+    .from("check_ins")
+    .select("*")
+    .eq("user_id", userId)
+    .order("check_in_time", { ascending: false })
     .limit(limit);
 
   if (error) throw error;
   return data;
 };
 
-export const getLeaderboard = async () => {
+// Function to get user badges
+export const getUserBadges = async (userId: string) => {
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('total_check_ins', { ascending: false })
-    .limit(10);
+    .from("badges")
+    .select("*")
+    .eq("user_id", userId)
+    .order("earned_at", { ascending: false });
 
   if (error) throw error;
-  return data as Profile[];
+  return data;
 };
 
-export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'created_at'>) => {
+// Function to get all recent check-ins with profile information
+export const getAllCheckIns = async (limit = 10) => {
   const { data, error } = await supabase
-    .from('check_ins')
-    .insert([checkIn])
-    .select();
+    .from("check_ins")
+    .select(`
+      *,
+      profiles (
+        username,
+        avatar_url
+      )
+    `)
+    .order("check_in_time", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data;
+};
+
+// Function to get leaderboard
+export const getLeaderboard = async () => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("total_check_ins", { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+// Function to create a check-in
+export const createCheckIn = async (checkInData: {
+  user_id: string;
+  venue_name: string;
+  venue_type: VenueType;
+  location: string;
+  check_in_time: string;
+  notes?: string;
+}) => {
+  const { data, error } = await supabase
+    .from("check_ins")
+    .insert([checkInData])
+    .select()
+    .single();
 
   if (error) throw error;
   return data;

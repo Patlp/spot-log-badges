@@ -9,7 +9,99 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      badges: {
+        Row: {
+          badge_type: string
+          created_at: string
+          earned_at: string
+          icon: string
+          id: string
+          user_id: string
+          venue_name: string
+        }
+        Insert: {
+          badge_type: string
+          created_at?: string
+          earned_at: string
+          icon: string
+          id?: string
+          user_id: string
+          venue_name: string
+        }
+        Update: {
+          badge_type?: string
+          created_at?: string
+          earned_at?: string
+          icon?: string
+          id?: string
+          user_id?: string
+          venue_name?: string
+        }
+        Relationships: []
+      }
+      check_ins: {
+        Row: {
+          check_in_time: string
+          created_at: string
+          id: string
+          location: string
+          notes: string | null
+          user_id: string
+          venue_name: string
+          venue_type: string
+        }
+        Insert: {
+          check_in_time: string
+          created_at?: string
+          id?: string
+          location: string
+          notes?: string | null
+          user_id: string
+          venue_name: string
+          venue_type: string
+        }
+        Update: {
+          check_in_time?: string
+          created_at?: string
+          id?: string
+          location?: string
+          notes?: string | null
+          user_id?: string
+          venue_name?: string
+          venue_type?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          total_badges: number
+          total_check_ins: number
+          unique_venues: number
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id: string
+          total_badges?: number
+          total_check_ins?: number
+          unique_venues?: number
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          total_badges?: number
+          total_check_ins?: number
+          unique_venues?: number
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
