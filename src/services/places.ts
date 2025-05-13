@@ -11,6 +11,21 @@ export interface Place {
   distance?: number;
 }
 
+// Function to map Google place types to venue categories
+export const mapGoogleTypeToVenueType = (types: string[]): string => {
+  if (types.includes('restaurant') || types.includes('food') || types.includes('meal_takeaway') || types.includes('cafe')) {
+    return 'Restaurant';
+  } else if (types.includes('bar')) {
+    return 'Bar';
+  } else if (types.includes('night_club')) {
+    return 'Club';
+  } else if (types.includes('event_venue') || types.includes('stadium') || types.includes('concert_hall')) {
+    return 'Event';
+  } else {
+    return 'Other';
+  }
+};
+
 // Function to get nearby places using either cached data or the API
 export const getNearbyPlaces = async (
   latitude: number,
