@@ -43,20 +43,25 @@ const App = () => {
   useEffect(() => {
     // Check active session when the app loads
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user || null);
+        setLoading(false);
 
-      // Set up listener for auth state changes
-      const { data: { subscription } } = await supabase.auth.onAuthStateChange(
-        (_event, session) => {
-          setUser(session?.user || null);
-        }
-      );
+        // Set up listener for auth state changes
+        const { data: { subscription } } = await supabase.auth.onAuthStateChange(
+          (_event, session) => {
+            setUser(session?.user || null);
+          }
+        );
 
-      return () => {
-        subscription?.unsubscribe();
-      };
+        return () => {
+          subscription?.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Auth error:", error);
+        setLoading(false);
+      }
     };
 
     getSession();
@@ -73,6 +78,15 @@ const App = () => {
     signOut
   }), [user, loading]);
 
+  // Don't render routes until we've checked if the user is logged in
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-4 border-t-presence-primary rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={authContextValue}>
@@ -81,7 +95,9 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/auth" element={
+                user ? <Navigate to="/" replace /> : <AuthPage />
+              } />
               
               <Route element={<Layout />}>
                 <Route path="/" element={
