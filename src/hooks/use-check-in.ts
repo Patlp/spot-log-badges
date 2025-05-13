@@ -67,14 +67,9 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         // Create the check-in
         console.log("Creating check-in with data:", checkInData);
         
-        try {
-          const checkInResult = await createCheckIn(checkInData);
-          console.log("Check-in created successfully:", checkInResult);
-          return { success: true, data: checkInResult };
-        } catch (error: any) {
-          console.error("Check-in creation error:", error);
-          throw new Error(`Check-in failed: ${error.message || "Unknown error"}`);
-        }
+        const checkInResult = await createCheckIn(checkInData);
+        console.log("Check-in created successfully:", checkInResult);
+        return { success: true, data: checkInResult };
       } catch (error: any) {
         console.error("Check-in process error:", error);
         throw error;
@@ -92,12 +87,12 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       
-      // Show success toast with fixed duration
+      // Show success toast
       toast({
         title: "Check-in Successful!",
         description: "Your check-in has been recorded.",
         variant: "default",
-        duration: 5000, // Explicitly set duration
+        duration: 5000,
       });
       
       // Navigate to profile page
@@ -108,7 +103,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         options.onSuccess();
       }
       
-      // Ensure isSubmitting is reset
+      // Reset submission state
       setIsSubmitting(false);
     },
     onError: (error: any) => {
@@ -117,7 +112,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       // Set the error state
       setCheckInError(error.message || "Unknown error occurred");
       
-      // Show error toast with specific message and duration
+      // Show error toast
       toast({
         title: "Check-in Failed",
         description: `Error: ${error.message || "Unknown error occurred"}`,
@@ -125,7 +120,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         duration: 7000, // Give more time to read error messages
       });
       
-      // Ensure isSubmitting is reset
+      // Reset submission state
       setIsSubmitting(false);
     },
     onSettled: () => {

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,43 +25,10 @@ export function PlaceDetails({
   isSubmitting,
   onSubmit
 }: PlaceDetailsProps) {
-  const [localSubmitting, setLocalSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  
-  // Reset local submitting state when isSubmitting changes to false
-  useEffect(() => {
-    if (!isSubmitting && localSubmitting) {
-      console.log("External submission completed, resetting local state");
-      setLocalSubmitting(false);
-    }
-  }, [isSubmitting, localSubmitting]);
-  
-  // Safety timeout to prevent UI from being stuck
-  useEffect(() => {
-    let timeoutId: number | undefined;
-    
-    if (localSubmitting) {
-      timeoutId = window.setTimeout(() => {
-        console.log("Submission timeout reached, resetting UI");
-        if (localSubmitting) {
-          setLocalSubmitting(false);
-          setSubmitError("Check-in timed out. The request may still be processing or failed silently. Please check your console logs.");
-          toast({
-            title: "Check-in Timeout",
-            description: "Your check-in is taking longer than expected. It may still be processing in the background.",
-            variant: "warning",
-          });
-        }
-      }, 8000); // 8 second timeout
-    }
-    
-    return () => {
-      if (timeoutId) window.clearTimeout(timeoutId);
-    };
-  }, [localSubmitting]);
-  
+
   const handleSubmit = (values: any) => {
-    if (localSubmitting || isSubmitting) {
+    if (isSubmitting) {
       console.log("Already submitting, ignoring click");
       return; // Prevent double submissions
     }
@@ -69,7 +36,6 @@ export function PlaceDetails({
     // Clear any previous error
     setSubmitError(null);
     console.log("PlaceDetails: Handling form submission with values:", values);
-    setLocalSubmitting(true);
     
     // Call the onSubmit function, but catch any synchronous errors
     try {
@@ -77,17 +43,14 @@ export function PlaceDetails({
     } catch (error: any) {
       console.error("Synchronous error in handleSubmit:", error);
       setSubmitError(error.message || "An unexpected error occurred");
-      setLocalSubmitting(false);
       toast({
         title: "Error",
         description: error.message || "An unexpected error occurred",
         variant: "destructive",
+        duration: 5000,
       });
     }
   };
-
-  // Use a combined submitting state to ensure UI reflects submission properly
-  const combinedSubmitting = isSubmitting || localSubmitting;
 
   return (
     <Form {...form}>
@@ -142,10 +105,10 @@ export function PlaceDetails({
 
         <Button
           type="submit"
-          disabled={combinedSubmitting}
+          disabled={isSubmitting}
           className="w-full"
         >
-          {combinedSubmitting ? (
+          {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Checking In at {selectedPlace.name}...

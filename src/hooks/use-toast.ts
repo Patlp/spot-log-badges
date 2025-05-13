@@ -1,14 +1,32 @@
 
-// Re-export from the proper source
-import { useToast as useToastOrig, toast as toastOrig } from "@/components/ui/use-toast";
+// Re-export from the proper source using the Sonner toast library
+import { toast as sonnerToast } from "sonner";
 
-export const useToast = useToastOrig;
-
-// Add direct toast function for easier access in components
-export function toast(props: { title?: string; description?: string; variant?: "default" | "destructive" | "warning" | undefined; duration?: number }) {
-  return toastOrig({
-    ...props,
-    // We need to remove duration from props before passing to toastOrig since it doesn't accept it
-    duration: undefined, // Remove this prop before spreading into toastOrig
+// Provide a consistent toast API that wraps Sonner
+export function toast(props: { 
+  title?: string; 
+  description?: string; 
+  variant?: "default" | "destructive" | "warning" | undefined; 
+  duration?: number 
+}) {
+  const { title, description, variant, duration = 5000 } = props;
+  
+  // Map our variants to Sonner variants
+  const sonnerVariant = variant === "destructive" ? "error" : 
+                         variant === "warning" ? "warning" : 
+                         "default";
+  
+  // Call Sonner toast with our mapped properties
+  return sonnerToast(title || "", {
+    description,
+    duration,
+    className: variant ? `toast-${variant}` : undefined
   });
+}
+
+// Export a hook-based version with the same API
+export function useToast() {
+  return {
+    toast
+  };
 }
