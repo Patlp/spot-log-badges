@@ -211,43 +211,50 @@ export const createCheckIn = async (checkInData: {
     
     console.log("Check-in data prepared:", testData);
     
-    // Using direct table name with no type binding
-    const { data, error } = await supabase
-      .from("check_ins")
-      .insert([testData])
-      .select();
-    
-    console.log("Insert result:", { data, error });
-    
-    if (error) {
-      console.error("Insert failed with error:", error);
-      throw new Error(error.message || "Failed to create check-in");
-    }
-    
-    if (!data || data.length === 0) {
-      console.error("No data returned after successful insert");
-      throw new Error("No data returned from insert operation");
-    }
-    
-    console.log("Check-in finished successfully:", data);
-    
-    // Also update the user's check-in count in the profile
+    // Using direct insert with explicit try/catch as requested
     try {
-      const { error: updateError } = await supabase.rpc('increment_check_in_count', {
-        user_id_param: checkInData.user_id,
-        venue_name_param: checkInData.venue_name
-      });
+      console.log("Check-in started", { testData });
+      const { data, error } = await supabase
+        .from("check_ins")
+        .insert([testData])
+        .select();
       
-      if (updateError) {
-        console.warn("Failed to update profile check-in count:", updateError);
-        // Don't throw here, just log the warning
+      console.log("Insert result:", { data, error });
+      
+      if (error) {
+        console.error("Insert failed with error:", error);
+        throw new Error(error.message || "Failed to create check-in");
       }
-    } catch (updateError) {
-      console.warn("Error updating profile after check-in:", updateError);
-      // Don't throw here, the check-in was successful
+      
+      if (!data || data.length === 0) {
+        console.error("No data returned after successful insert");
+        throw new Error("No data returned from insert operation");
+      }
+      
+      console.log("Check-in finished successfully:", data);
+      
+      // Also update the user's check-in count in the profile
+      try {
+        const { error: updateError } = await supabase.rpc('increment_check_in_count', {
+          user_id_param: checkInData.user_id,
+          venue_name_param: checkInData.venue_name
+        });
+        
+        if (updateError) {
+          console.warn("Failed to update profile check-in count:", updateError);
+          // Don't throw here, just log the warning
+        }
+      } catch (updateError) {
+        console.warn("Error updating profile after check-in:", updateError);
+        // Don't throw here, the check-in was successful
+      }
+      
+      return data[0];
+    } catch (insertError: any) {
+      console.error("Check-in insert error:", insertError);
+      alert("Check-in failed: " + (insertError.message || "Unknown error"));
+      throw insertError;
     }
-    
-    return data[0];
     
   } catch (error: any) {
     console.error("Final createCheckIn error:", error);

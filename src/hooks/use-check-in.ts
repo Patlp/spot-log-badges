@@ -17,13 +17,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   
-  // Create a separate function to handle navigation safely
-  const navigateToProfile = useCallback(() => {
-    console.log("[useCheckIn] Navigating to profile page");
-    navigate("/profile");
-  }, [navigate]);
-  
-  // The mutation setup
+  // The mutation setup with enhanced error handling
   const checkInMutation = useMutation({
     mutationFn: async ({ 
       data, 
@@ -55,14 +49,37 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         
         console.log("[useCheckIn] Check-in data prepared:", checkInData);
         
-        // Create the check-in directly without wrappers
-        console.log("[useCheckIn] Calling createCheckIn function");
-        const checkInResult = await createCheckIn(checkInData);
-        console.log("[useCheckIn] Check-in created successfully:", checkInResult);
-        
-        return { success: true, data: checkInResult };
+        // Create the check-in with explicit try/catch
+        try {
+          console.log("[useCheckIn] Check-in started", { checkInData });
+          const { data: resultData, error } = await supabase
+            .from("check_ins")
+            .insert([checkInData])
+            .select();
+            
+          console.log("[useCheckIn] Insert result:", { resultData, error });
+          
+          if (error) {
+            console.error("[useCheckIn] Insert failed with error:", error);
+            throw new Error(error.message || "Failed to create check-in");
+          }
+          
+          if (!resultData || resultData.length === 0) {
+            console.error("[useCheckIn] No data returned after successful insert");
+            throw new Error("No data returned from insert operation");
+          }
+          
+          console.log("[useCheckIn] Check-in completed successfully:", resultData);
+          return resultData[0];
+        } catch (insertError) {
+          console.error("[useCheckIn] Check-in insert error:", insertError);
+          // Re-throw to be caught by the outer catch
+          throw insertError;
+        }
       } catch (error: any) {
         console.error("[useCheckIn] Check-in process error:", error);
+        // Alert for immediate feedback during debugging
+        alert("Check-in failed: " + (error.message || "Unknown error"));
         throw error; // Rethrow for the mutation error handler
       }
     },
@@ -78,13 +95,6 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       
-      // Show toast
-      toast({
-        title: "Check-in Successful!",
-        description: "Your check-in has been recorded.",
-        duration: 3000,
-      });
-      
       // Reset the submission state
       setIsSubmitting(false);
       
@@ -93,10 +103,9 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         options.onSuccess();
       }
 
-      // Use a small delay before navigation to ensure toast is visible
-      setTimeout(() => {
-        navigateToProfile();
-      }, 500);
+      // Temporarily disable navigation to isolate the check-in functionality
+      console.log("[useCheckIn] Success - navigation disabled for testing");
+      // navigate("/profile");
     },
     onError: (error: any) => {
       console.log("[useCheckIn] Mutation failed:", error);
@@ -107,12 +116,12 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       // Set the error state
       setCheckInError(error.message || "Unknown error occurred");
       
-      // Show error toast with detailed error message
-      toast({
-        title: "Check-in Failed",
-        description: `Error: ${error.message || "Unknown error occurred"}`,
-        duration: 5000,
-        variant: "destructive"
+      // Alert for immediate feedback during debugging
+      console.error("[useCheckIn] Error details:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        stack: error.stack
       });
     }
   });
@@ -127,23 +136,13 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
     }
     
     if (!userId) {
-      toast({
-        title: "Authentication Required",
-        description: "You must be logged in to check in.",
-        duration: 5000,
-        variant: "warning"
-      });
+      alert("Authentication Required: You must be logged in to check in.");
       return;
     }
     
     // Check for missing required fields
     if (!data.venue_name || !data.venue_type || !data.location || !data.check_in_time) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill out all required fields.",
-        duration: 5000,
-        variant: "warning"
-      });
+      alert("Missing Information: Please fill out all required fields.");
       return;
     }
     
@@ -156,13 +155,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       console.error("[useCheckIn] Unexpected error during mutation trigger:", error);
       setIsSubmitting(false);
       setCheckInError(error.message || "An unexpected error occurred");
-      
-      toast({
-        title: "Check-in Failed",
-        description: "There was an unexpected error. Please try again.",
-        duration: 5000,
-        variant: "destructive"
-      });
+      alert("Check-in Failed: " + (error.message || "An unexpected error occurred"));
     }
   }, [isSubmitting, checkInMutation]);
 
