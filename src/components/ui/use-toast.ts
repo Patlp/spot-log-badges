@@ -14,7 +14,7 @@ type ToasterToastProps = {
   action?: ToastActionElement
   open: boolean
   onOpenChange: (open: boolean) => void
-  variant?: "default" | "destructive"
+  variant?: "default" | "destructive" | "warning"
 }
 
 const actionTypes = {
@@ -131,7 +131,7 @@ interface ToastProps {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
-  variant?: "default" | "destructive"
+  variant?: "default" | "destructive" | "warning"
 }
 
 // Define the return type of the toast function explicitly

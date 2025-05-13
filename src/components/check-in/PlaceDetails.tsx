@@ -50,7 +50,7 @@ export function PlaceDetails({
           toast({
             title: "Check-in Taking Too Long",
             description: "The check-in is taking longer than expected. It may still complete in the background.",
-            variant: "warning"
+            variant: "default" // Changed from "warning" to "default" to match allowed variants
           });
         }
       }, 8000); // 8 second timeout
