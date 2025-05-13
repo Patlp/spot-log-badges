@@ -102,6 +102,39 @@ export type Database = {
         }
         Relationships: []
       }
+      venues: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          place_id: string
+          types: string[]
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          place_id: string
+          types: string[]
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          place_id?: string
+          types?: string[]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

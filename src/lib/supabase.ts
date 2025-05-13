@@ -95,3 +95,80 @@ export const createCheckIn = async (checkInData: {
   if (error) throw error;
   return data;
 };
+
+// Function to check for nearby venues in database
+export const getNearbyVenues = async (latitude: number, longitude: number, radius: number = 500) => {
+  try {
+    // Calculate a rough bounding box for faster querying
+    const latDiff = radius / 111000; // approx 111km per degree of latitude
+    const lonDiff = radius / (111000 * Math.cos(latitude * (Math.PI / 180)));
+    
+    const { data, error } = await supabase
+      .from("venues")
+      .select("*")
+      .gte("latitude", latitude - latDiff)
+      .lte("latitude", latitude + latDiff)
+      .gte("longitude", longitude - lonDiff)
+      .lte("longitude", longitude + lonDiff);
+      
+    if (error) {
+      console.error("Error fetching saved venues:", error);
+      return [];
+    }
+    
+    if (!data || data.length === 0) return [];
+    
+    // Calculate actual distances and filter by radius
+    return data
+      .map(venue => {
+        const distance = calculateDistance(
+          latitude, 
+          longitude, 
+          Number(venue.latitude),  // Convert from numeric to number if needed
+          Number(venue.longitude)
+        );
+        return { ...venue, distance };
+      })
+      .filter(venue => venue.distance <= radius);
+  } catch (error) {
+    console.error("Error getting nearby venues:", error);
+    return [];
+  }
+};
+
+// Helper function to calculate distance between coordinates in meters
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in meters
+};
+
+// Function to save a venue
+export const saveVenue = async (venueData: {
+  place_id: string;
+  name: string;
+  address: string;
+  types: string[];
+  latitude: number;
+  longitude: number;
+}) => {
+  try {
+    const { data, error } = await supabase
+      .from("venues")
+      .upsert([venueData], { onConflict: 'place_id' })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error("Error saving venue:", error);
+    return null;
+  }
+};

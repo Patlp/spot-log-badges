@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
-import { supabase, createCheckIn, VenueType } from "../lib/supabase";
+import { supabase, createCheckIn, VenueType, saveVenue } from "../lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -172,18 +172,14 @@ const CheckInPage = () => {
         if (selectedPlace) {
           // Store the venue in our venues table for future reference
           try {
-            const { error: venueError } = await supabase.from("venues").upsert({
+            await saveVenue({
               place_id: selectedPlace.place_id,
               name: selectedPlace.name,
               address: selectedPlace.address,
               types: selectedPlace.types,
               latitude: selectedPlace.latitude,
               longitude: selectedPlace.longitude,
-            }, {
-              onConflict: "place_id"
             });
-            
-            if (venueError) console.error("Error storing venue:", venueError);
           } catch (venueError) {
             console.error("Venue storage error:", venueError);
             // Continue with check-in even if venue storage fails
