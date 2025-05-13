@@ -5,13 +5,18 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Use a dummy URL and key if not provided
+// This allows the app to at least load, though Supabase functionality won't work
+const fallbackUrl = 'https://placeholder-project.supabase.co';
+const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyLXByb2plY3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYxNjQyMjU1MCwiZXhwIjoxOTMyMDg0NTUwfQ.placeholder-key';
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase credentials. Make sure you have integrated Supabase with your Lovable project and refreshed the page.');
 }
 
 export const supabase = createClient(
-  supabaseUrl || '',
-  supabaseAnonKey || ''
+  supabaseUrl || fallbackUrl,
+  supabaseAnonKey || fallbackKey
 );
 
 // Type definitions for our database schema
