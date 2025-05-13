@@ -14,7 +14,7 @@ import { useToast as useToastOrig } from "@/components/ui/use-toast"
 export const useToast = useToastOrig;
 
 // Add direct toast function for easier access in components
-export const toast = (props: { title?: string; description?: string; variant?: "default" | "destructive" }) => {
+export function toast(props: { title?: string; description?: string; variant?: "default" | "destructive" }) {
   const { toast: toastFn } = useToastOrig();
-  toastFn(props);
-};
+  return toastFn(props);
+}
