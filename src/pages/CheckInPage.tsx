@@ -55,6 +55,7 @@ const CheckInPage = () => {
   const [selectedPlace, setSelectedPlace] = useState<PlaceOption | null>(null);
   const geolocation = useGeolocation();
   const [activeTab, setActiveTab] = useState<string>("manual");
+  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
 
   // Get current date/time in ISO format for the default value
   const currentDateTime = new Date().toISOString().slice(0, 16);
@@ -88,6 +89,11 @@ const CheckInPage = () => {
         try {
           const places = await getNearbyPlaces(geolocation.latitude, geolocation.longitude);
           setNearbyPlaces(places);
+          
+          // If we successfully got places, switch to the nearby tab
+          if (places.length > 0) {
+            setActiveTab("nearby");
+          }
         } catch (error) {
           console.error("Error fetching places:", error);
           toast({
@@ -102,12 +108,34 @@ const CheckInPage = () => {
     };
 
     fetchPlaces();
-  }, [useLocation, geolocation, toast]);
+  }, [useLocation, geolocation.latitude, geolocation.longitude, geolocation.loading, geolocation.error, toast]);
+
+  // Check permission state
+  useEffect(() => {
+    // If permission state becomes known, handle it
+    if (geolocation.permissionState !== 'unknown') {
+      setShowPermissionPrompt(geolocation.permissionState === 'denied');
+      
+      // If permission is granted and useLocation was true, fetch places
+      if (geolocation.permissionState === 'granted' && useLocation) {
+        // Keep using location
+      } else if (geolocation.permissionState === 'denied') {
+        // Reset useLocation if permission is denied
+        setUseLocation(false);
+        setActiveTab("manual");
+      }
+    }
+  }, [geolocation.permissionState]);
 
   // Update location toggle handler
-  const handleToggleLocation = () => {
-    if (geolocation.permissionState === 'denied') {
+  const handleToggleLocation = async () => {
+    if (geolocation.permissionState === 'prompt' || geolocation.permissionState === 'unknown') {
+      // This will trigger the browser's permission prompt
+      await geolocation.requestPermission();
+      setUseLocation(true);
+    } else if (geolocation.permissionState === 'denied') {
       // Show guidance for enabling location if permission was denied
+      setShowPermissionPrompt(true);
       toast({
         title: "Location Permission Required",
         description: (
@@ -118,22 +146,15 @@ const CheckInPage = () => {
         ),
         variant: "destructive",
       });
-      
-      return;
-    }
-    
-    setUseLocation(!useLocation);
-    if (!useLocation) {
-      setActiveTab("nearby");
-      if (geolocation.error) {
-        toast({
-          title: "Location Issue",
-          description: geolocation.error,
-          variant: "destructive",
-        });
-      }
     } else {
-      setActiveTab("manual");
+      // Toggle location use if permission is already granted
+      setUseLocation(!useLocation);
+      if (!useLocation && !geolocation.error) {
+        // Request a fresh location reading
+        await geolocation.requestPermission();
+      } else {
+        setActiveTab("manual");
+      }
     }
   };
 
@@ -312,7 +333,7 @@ const CheckInPage = () => {
         </CardHeader>
 
         <CardContent>
-          {/* Location Toggle Button with enhanced error states */}
+          {/* Location Toggle Button with enhanced permission handling */}
           <div className="mb-8">
             <Button
               type="button"
@@ -334,48 +355,48 @@ const CheckInPage = () => {
               ) : (
                 <>
                   <LocateFixed className="mr-2 h-4 w-4" />
-                  Use my current location
+                  {geolocation.permissionState === 'denied' 
+                    ? 'Enable location services'
+                    : 'Use my current location'}
                 </>
               )}
             </Button>
 
-            {/* Enhanced Location Status Display */}
-            {(useLocation || geolocation.permissionState === 'denied') && (
+            {/* Enhanced Permission Status Display */}
+            {showPermissionPrompt && (
+              <Alert 
+                variant="destructive" 
+                className="mt-2 animate-in fade-in-50"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Location Permission Denied</AlertTitle>
+                <AlertDescription className="text-xs">
+                  <p>Please enable location services in your browser:</p>
+                  <ol className="list-decimal ml-5 mt-1 space-y-1">
+                    <li>Click the {navigator.userAgent.includes("Safari") ? "AA" : "lock/info"} icon in your browser's address bar</li>
+                    <li>Select "{navigator.userAgent.includes("Safari") ? "Website Settings" : "Site Permissions"}"</li>
+                    <li>Enable "Location" access</li>
+                    <li>Reload this page</li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {/* Only show loading/success states when not showing permission prompt */}
+            {!showPermissionPrompt && useLocation && (
               <div className="mt-2">
-                {geolocation.error ? (
-                  <Alert 
-                    variant="destructive" 
-                    className="mt-2 animate-in fade-in-50"
-                  >
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle className="ml-2">
-                      {geolocation.permissionState === 'denied' 
-                        ? 'Location Permission Denied' 
-                        : 'Location Error'}
-                    </AlertTitle>
-                    <AlertDescription className="text-sm">
-                      {geolocation.permissionState === 'denied' ? (
-                        <>
-                          <p>Please enable location services in your browser settings to use this feature.</p>
-                          <ol className="list-decimal ml-5 mt-2 text-xs">
-                            <li>Click the lock/info icon in your browser's address bar</li>
-                            <li>Find site permissions or location settings</li>
-                            <li>Allow access to your location</li>
-                            <li>Reload this page</li>
-                          </ol>
-                        </>
-                      ) : (
-                        geolocation.error
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                ) : geolocation.loading ? (
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground mt-2">
+                {geolocation.loading ? (
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Getting your location...</span>
                   </div>
+                ) : geolocation.error ? (
+                  <div className="text-sm text-destructive flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>{geolocation.error}</span>
+                  </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground mt-2">
+                  <div className="text-sm text-muted-foreground">
                     Location found at {geolocation.latitude.toFixed(4)}, {geolocation.longitude.toFixed(4)}
                   </div>
                 )}
