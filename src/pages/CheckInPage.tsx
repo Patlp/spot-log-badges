@@ -1,5 +1,5 @@
 
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
 import { supabase, createCheckIn, VenueType } from "../lib/supabase";
@@ -14,8 +14,14 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { MapPin, Save, Clock } from "lucide-react";
+import { MapPin, Save, Clock, Loader2, MapIcon, LocateFixed, Search } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useGeolocation } from "@/hooks/use-geolocation";
+import { getNearbyPlaces, mapGoogleTypeToVenueType } from "@/services/places";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card as CardComponent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Define the form validation schema using zod
 const checkInSchema = z.object({
@@ -28,12 +34,26 @@ const checkInSchema = z.object({
 
 type CheckInFormValues = z.infer<typeof checkInSchema>;
 
+type PlaceOption = {
+  name: string;
+  address: string;
+  place_id: string;
+  types: string[];
+  latitude: number;
+  longitude: number;
+};
+
 const CheckInPage = () => {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingPlaces, setIsLoadingPlaces] = useState(false);
+  const [useLocation, setUseLocation] = useState(false);
+  const [nearbyPlaces, setNearbyPlaces] = useState<PlaceOption[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceOption | null>(null);
+  const geolocation = useGeolocation();
 
   // Get current date/time in ISO format for the default value
   const currentDateTime = new Date().toISOString().slice(0, 16);
@@ -49,6 +69,56 @@ const CheckInPage = () => {
       notes: "",
     },
   });
+
+  // Update form when a place is selected
+  useEffect(() => {
+    if (selectedPlace) {
+      form.setValue("venue_name", selectedPlace.name);
+      form.setValue("location", selectedPlace.address);
+      form.setValue("venue_type", mapGoogleTypeToVenueType(selectedPlace.types));
+    }
+  }, [selectedPlace, form]);
+
+  // Fetch nearby places when use location is toggled on and we have coordinates
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      if (useLocation && !geolocation.loading && !geolocation.error && geolocation.latitude && geolocation.longitude) {
+        setIsLoadingPlaces(true);
+        try {
+          const places = await getNearbyPlaces(geolocation.latitude, geolocation.longitude);
+          setNearbyPlaces(places);
+        } catch (error) {
+          console.error("Error fetching places:", error);
+          toast({
+            title: "Error fetching nearby places",
+            description: "There was a problem finding venues near you. Please try again or enter venue details manually.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoadingPlaces(false);
+        }
+      }
+    };
+
+    fetchPlaces();
+  }, [useLocation, geolocation, toast]);
+
+  // Toggle location usage
+  const handleToggleLocation = () => {
+    setUseLocation(!useLocation);
+    if (!useLocation && geolocation.error) {
+      toast({
+        title: "Location Error",
+        description: geolocation.error,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Select a place from the nearby places list
+  const handleSelectPlace = (place: PlaceOption) => {
+    setSelectedPlace(place);
+  };
 
   // Mutation for check-in submission
   const checkInMutation = useMutation({
@@ -67,6 +137,22 @@ const CheckInPage = () => {
           check_in_time: data.check_in_time,
           notes: data.notes || "",
         };
+        
+        if (selectedPlace) {
+          // Store the venue in our venues table for future reference
+          const { error: venueError } = await supabase.from("venues").upsert({
+            place_id: selectedPlace.place_id,
+            name: selectedPlace.name,
+            address: selectedPlace.address,
+            types: selectedPlace.types,
+            latitude: selectedPlace.latitude,
+            longitude: selectedPlace.longitude,
+          }, {
+            onConflict: "place_id"
+          });
+          
+          if (venueError) console.error("Error storing venue:", venueError);
+        }
         
         await createCheckIn(checkInData);
         
@@ -206,6 +292,92 @@ const CheckInPage = () => {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent className="space-y-4">
+              {/* Location Toggle */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <LocateFixed className="h-5 w-5 mr-2 text-muted-foreground" />
+                  <span>Use my current location</span>
+                </div>
+                <Button
+                  type="button"
+                  variant={useLocation ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleToggleLocation}
+                  disabled={geolocation.loading}
+                >
+                  {geolocation.loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : useLocation ? (
+                    "Enabled"
+                  ) : (
+                    "Disabled"
+                  )}
+                </Button>
+              </div>
+
+              {/* Location Status */}
+              {useLocation && (
+                <div className="mb-4">
+                  {geolocation.error ? (
+                    <Alert variant="destructive">
+                      <AlertDescription>{geolocation.error}</AlertDescription>
+                    </Alert>
+                  ) : geolocation.loading ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Getting your location...</span>
+                    </div>
+                  ) : (
+                    <Alert>
+                      <AlertDescription>
+                        Location found! Coordinates: {geolocation.latitude.toFixed(4)}, {geolocation.longitude.toFixed(4)}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+
+              {/* Nearby Places */}
+              {useLocation && !geolocation.loading && !geolocation.error && (
+                <div className="mb-4">
+                  <h3 className="text-lg font-medium mb-2">Nearby Places</h3>
+                  {isLoadingPlaces ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-20 w-full" />
+                      <Skeleton className="h-20 w-full" />
+                      <Skeleton className="h-20 w-full" />
+                    </div>
+                  ) : nearbyPlaces.length === 0 ? (
+                    <Alert>
+                      <AlertDescription>
+                        No places found nearby. Try expanding the search area or enter venue details manually.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div className="grid gap-2 max-h-64 overflow-y-auto">
+                      {nearbyPlaces.map((place) => (
+                        <CardComponent 
+                          key={place.place_id}
+                          className={`cursor-pointer p-3 ${selectedPlace?.place_id === place.place_id ? 'border-2 border-primary' : ''}`}
+                          onClick={() => handleSelectPlace(place)}
+                        >
+                          <div className="flex justify-between">
+                            <div>
+                              <h4 className="font-medium">{place.name}</h4>
+                              <p className="text-sm text-muted-foreground">{place.address}</p>
+                            </div>
+                            <Badge>{mapGoogleTypeToVenueType(place.types)}</Badge>
+                          </div>
+                        </CardComponent>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Venue Name */}
               <FormField
                 control={form.control}
@@ -231,6 +403,7 @@ const CheckInPage = () => {
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -306,7 +479,10 @@ const CheckInPage = () => {
                 className="w-full"
               >
                 {isSubmitting ? (
-                  <>Checking In...</>
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Checking In...
+                  </>
                 ) : (
                   <>
                     <MapPin className="mr-2 h-4 w-4" />
