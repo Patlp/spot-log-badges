@@ -213,10 +213,11 @@ export const createCheckIn = async (checkInData: {
     console.log("Check-in data prepared:", testData);
     
     // Insert with proper error handling using the exact structure requested
-    const { data, error } = await supabase
-      .from("check_ins")
+    // Fix the TypeScript error by using type assertion
+    const { data, error } = await (supabase
+      .from("check_ins" as any)
       .insert([testData])
-      .select();
+      .select());
     
     console.log("Insert result:", { data, error });
     
@@ -339,12 +340,13 @@ export const saveVenue = async (venueData: {
     }
     
     // Allow anonymous insert even without user
-    const { error, status } = await supabase
-      .from("venues")
+    // Fix the TypeScript error by using type assertion
+    const { error, status } = await (supabase
+      .from("venues" as any)
       .upsert([venueData], { 
         onConflict: 'place_id', 
         ignoreDuplicates: true // Keep true to ignore duplicates
-      });
+      }));
       
     if (error) {
       console.error("Error saving venue:", error);
