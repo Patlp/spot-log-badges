@@ -206,7 +206,7 @@ export const createCheckIn = async (checkInData: {
           // Check if this is their 3rd+ check-in at this venue, award a "regular" badge
           const { data: checkInCount, error: countError } = await supabase
             .from("check_ins")
-            .select("id")
+            .select("id", { count: 'exact' })
             .eq("user_id", checkInData.user_id)
             .eq("venue_name", checkInData.venue_name);
             
