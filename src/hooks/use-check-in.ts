@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCheckIn } from "@/lib/supabase";
@@ -50,13 +49,29 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         
         console.log("[useCheckIn] Check-in data prepared:", checkInData);
         
+        // DEBUGGING STEP 1: Log the full payload being sent
+        console.log("[useCheckIn] FULL PAYLOAD BEING SENT:", JSON.stringify(checkInData, null, 2));
+        
+        // DEBUGGING STEP 2: Test with hardcoded payload
+        // Uncomment this to test with hardcoded data
+        // const hardcodedData = {
+        //   user_id: userId, // Keep the real user ID
+        //   venue_name: "Test Place",
+        //   venue_type: "Restaurant", 
+        //   location: "Test Location",
+        //   check_in_time: new Date().toISOString(),
+        //   notes: "Test note"
+        // };
+        // console.log("[useCheckIn] Using HARDCODED test data:", hardcodedData);
+        
         // Create the check-in with explicit try/catch
         try {
           console.log("[useCheckIn] Check-in started", { checkInData });
           const { data: resultData, error } = await supabase
             .from("check_ins")
             .insert([checkInData])
-            .select();
+            .select()
+            .throwOnError(); // DEBUGGING STEP 4: Add throwOnError to surface RLS issues
             
           console.log("[useCheckIn] Insert result:", { resultData, error });
           
@@ -72,9 +87,18 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           
           console.log("[useCheckIn] Check-in completed successfully:", resultData);
           return resultData[0];
-        } catch (insertError) {
+        } catch (insertError: any) {
           console.error("[useCheckIn] Check-in insert error:", insertError);
-          // Re-throw to be caught by the outer catch
+          console.error("[useCheckIn] Error details:", {
+            message: insertError.message,
+            code: insertError.code,
+            details: insertError.details,
+            hint: insertError.hint,
+            stack: insertError.stack
+          });
+          
+          // Alert for immediate feedback during debugging
+          alert("Check-in failed: " + (insertError.message || "Unknown error"));
           throw insertError;
         }
       } catch (error: any) {
