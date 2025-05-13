@@ -10,6 +10,7 @@ import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -26,6 +27,7 @@ export function PlaceDetails({
 }: PlaceDetailsProps) {
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Reset local submitting state when isSubmitting changes to false
   useEffect(() => {

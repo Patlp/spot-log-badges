@@ -137,7 +137,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         }
         
         return { badgeEarned: badgeType };
-      } catch (error) {
+      } catch (error: any) {
         console.error("Check-in process error:", error);
         throw error;
       }
@@ -169,19 +169,23 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         });
       }
       
+      // Always set isSubmitting to false before navigation to ensure UI updates
       setIsSubmitting(false);
       
-      // Navigate to the profile page after successful check-in
-      console.log("Navigating to profile page");
-      navigate("/profile");
-      
-      // Call the success callback if provided
-      if (options?.onSuccess) {
-        console.log("Calling onSuccess callback");
-        options.onSuccess();
-      }
+      // Navigate to the profile page after successful check-in with a slight delay
+      // to ensure toast is visible and state is updated
+      setTimeout(() => {
+        console.log("Navigating to profile page");
+        navigate("/profile");
+        
+        // Call the success callback if provided
+        if (options?.onSuccess) {
+          console.log("Calling onSuccess callback");
+          options.onSuccess();
+        }
+      }, 300);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Check-in error:", error);
       toast({
         title: "Check-in Failed",
@@ -190,6 +194,10 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       });
       setIsSubmitting(false);
     },
+    onSettled: () => {
+      // Ensure isSubmitting is reset regardless of success/failure
+      setIsSubmitting(false);
+    }
   });
 
   const handleCheckIn = (data: CheckInFormValues, userId: string, selectedPlace: Place | null) => {

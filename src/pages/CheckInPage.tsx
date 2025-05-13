@@ -1,3 +1,4 @@
+
 import { useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -56,9 +57,8 @@ const CheckInPage = () => {
   
   const { isSubmitting, handleCheckIn } = useCheckIn({
     onSuccess: () => {
-      console.log("Check-in completed successfully");
-      // We're now handling navigation in the useCheckIn hook,
-      // so we don't need to navigate here anymore
+      console.log("Check-in completed successfully from CheckInPage callback");
+      // Navigation is now handled inside the useCheckIn hook
     }
   });
 
