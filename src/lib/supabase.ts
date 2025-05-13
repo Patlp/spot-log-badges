@@ -6,13 +6,22 @@ import type { Database } from '@/integrations/supabase/types';
 const supabaseUrl = "https://rtbicjimopzlqpodwjcm.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0Ymljamltb3B6bHFwb2R3amNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMzU3OTQsImV4cCI6MjA2MjcxMTc5NH0.YIkf-O5N0nq1f41ybefYu6Eey7qOOhusdCamjLbJHJM";
 
+// Create a custom type that extends the Supabase client to accept string table names
+type CustomSupabaseClient = ReturnType<typeof createClient<Database>> & {
+  from: <T extends keyof Database['public']['Tables'] | string>(
+    table: T
+  ) => T extends keyof Database['public']['Tables'] 
+    ? ReturnType<ReturnType<typeof createClient<Database>>['from']> 
+    : ReturnType<ReturnType<typeof createClient<Database>>['from']>
+};
+
 // Create a single supabase client for interacting with your database
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true
   },
-});
+}) as CustomSupabaseClient;
 
 // Create storage bucket for avatars if it doesn't exist
 const initStorage = async () => {
@@ -213,11 +222,11 @@ export const createCheckIn = async (checkInData: {
     console.log("Check-in data prepared:", testData);
     
     // Insert with proper error handling using the exact structure requested
-    // Fix the TypeScript error by using type assertion
-    const { data, error } = await (supabase
-      .from("check_ins" as any)
+    // Fixed TypeScript issue by using the extended client type
+    const { data, error } = await supabase
+      .from("check_ins")
       .insert([testData])
-      .select());
+      .select();
     
     console.log("Insert result:", { data, error });
     
@@ -340,13 +349,13 @@ export const saveVenue = async (venueData: {
     }
     
     // Allow anonymous insert even without user
-    // Fix the TypeScript error by using type assertion
-    const { error, status } = await (supabase
-      .from("venues" as any)
+    // Fixed TypeScript issue by using the extended client type
+    const { error, status } = await supabase
+      .from("venues")
       .upsert([venueData], { 
         onConflict: 'place_id', 
         ignoreDuplicates: true // Keep true to ignore duplicates
-      }));
+      });
       
     if (error) {
       console.error("Error saving venue:", error);
