@@ -50,7 +50,7 @@ export function useGeolocation() {
       // Double-check with the permissions API if available
       if (navigator.permissions && navigator.permissions.query) {
         try {
-          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
           setLocation(prev => ({
             ...prev,
             permissionState: permissionStatus.state as 'granted' | 'denied' | 'prompt'
@@ -99,7 +99,7 @@ export function useGeolocation() {
 
     // Check for permission state if available in the browser
     if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' }).then(permissionStatus => {
+      navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(permissionStatus => {
         setLocation(prev => ({
           ...prev,
           permissionState: permissionStatus.state as 'granted' | 'denied' | 'prompt'

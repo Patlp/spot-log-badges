@@ -1,3 +1,4 @@
+
 import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -57,6 +58,7 @@ const CheckInPage = () => {
   const [activeTab, setActiveTab] = useState<string>("manual");
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
   const [forceReattempt, setForceReattempt] = useState(false);
+  const [hasActivatedLocation, setHasActivatedLocation] = useState(false);
 
   // Get current date/time in ISO format for the default value
   const currentDateTime = new Date().toISOString().slice(0, 16);
@@ -156,6 +158,8 @@ const CheckInPage = () => {
 
   // Update location toggle handler with improved Safari support
   const handleToggleLocation = async () => {
+    setHasActivatedLocation(true);
+    
     // Always try to get location regardless of reported permission state
     // This works better with Safari which sometimes misreports permission state
     setUseLocation(true);
@@ -180,6 +184,21 @@ const CheckInPage = () => {
   const handleSelectPlace = (place: PlaceOption) => {
     setSelectedPlace(place);
   };
+
+  // Auto-trigger location permission prompt on component mount for iPad users
+  useEffect(() => {
+    // Only auto-trigger for iPad/Safari users and only once
+    if (!hasActivatedLocation && 
+        (navigator.userAgent.includes("iPad") || 
+         (navigator.userAgent.includes("Safari") && !navigator.userAgent.includes("Chrome")))) {
+      // Small delay to let the UI render first
+      const timer = setTimeout(() => {
+        handleToggleLocation();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [hasActivatedLocation]);
 
   // Mutation for check-in submission
   const checkInMutation = useMutation({
@@ -428,7 +447,7 @@ const CheckInPage = () => {
                         <li>Tap "AA" in your address bar</li>
                         <li>Tap "Website Settings"</li>
                         <li>Ensure "Location" is set to "Allow"</li>
-                        <li>Reload this page</li>
+                        <li>Close settings and tap "Try Again" below</li>
                       </ol>
                       <Button 
                         variant="outline" 
@@ -478,7 +497,7 @@ const CheckInPage = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="nearby" 
-                disabled={isLoadingPlaces && nearbyPlaces.length === 0}
+                disabled={isLoadingPlaces || (nearbyPlaces.length === 0 && useLocation && !geolocation.loading)}
               >
                 <MapPin className="h-4 w-4 mr-2" />
                 {nearbyPlaces.length > 0 
