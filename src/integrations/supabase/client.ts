@@ -9,11 +9,9 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-// Extended type to allow string table names
-type CustomSupabaseClient = ReturnType<typeof createClient<Database>> & {
-  from: <T extends keyof Database['public']['Tables'] | string>(
-    table: T
-  ) => ReturnType<ReturnType<typeof createClient<Database>>['from']>
-};
+// Create a type that allows any string as table name
+type CustomSupabaseClient = {
+  from: (table: string) => any;
+} & ReturnType<typeof createClient<Database>>;
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) as CustomSupabaseClient;

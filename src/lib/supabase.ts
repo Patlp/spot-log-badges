@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -6,14 +5,10 @@ import type { Database } from '@/integrations/supabase/types';
 const supabaseUrl = "https://rtbicjimopzlqpodwjcm.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0Ymljamltb3B6bHFwb2R3amNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxMzU3OTQsImV4cCI6MjA2MjcxMTc5NH0.YIkf-O5N0nq1f41ybefYu6Eey7qOOhusdCamjLbJHJM";
 
-// Create a custom type that extends the Supabase client to accept string table names
-type CustomSupabaseClient = ReturnType<typeof createClient<Database>> & {
-  from: <T extends keyof Database['public']['Tables'] | string>(
-    table: T
-  ) => T extends keyof Database['public']['Tables'] 
-    ? ReturnType<ReturnType<typeof createClient<Database>>['from']> 
-    : ReturnType<ReturnType<typeof createClient<Database>>['from']>
-};
+// Create a simpler type that directly allows string table names
+type CustomSupabaseClient = {
+  from: (table: string) => any;
+} & ReturnType<typeof createClient<Database>>;
 
 // Create a single supabase client for interacting with your database
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -222,7 +217,6 @@ export const createCheckIn = async (checkInData: {
     console.log("Check-in data prepared:", testData);
     
     // Insert with proper error handling using the exact structure requested
-    // Fixed TypeScript issue by using the extended client type
     const { data, error } = await supabase
       .from("check_ins")
       .insert([testData])
@@ -349,7 +343,6 @@ export const saveVenue = async (venueData: {
     }
     
     // Allow anonymous insert even without user
-    // Fixed TypeScript issue by using the extended client type
     const { error, status } = await supabase
       .from("venues")
       .upsert([venueData], { 
