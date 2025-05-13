@@ -42,27 +42,11 @@ const AuthPage = () => {
 
       if (error) throw error;
 
-      if (data?.user) {
-        // Create a profile for the new user
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            { 
-              id: data.user.id, 
-              username: username || email.split('@')[0],
-              total_check_ins: 0,
-              total_badges: 0,
-              unique_venues: 0
-            }
-          ]);
+      toast({
+        title: 'Verification email sent',
+        description: 'Please check your email to verify your account.',
+      });
 
-        if (profileError) throw profileError;
-        
-        toast({
-          title: 'Account created',
-          description: 'Your account has been created successfully. You can now sign in.',
-        });
-      }
     } catch (error: any) {
       toast({
         title: 'Error',
