@@ -41,6 +41,7 @@ export async function getNearbyPlaces(
     if (error) {
       console.error("Error fetching saved places:", error);
     } else if (existingPlaces && existingPlaces.length > 0) {
+      console.log(`Found ${existingPlaces.length} existing places in our database`);
       return existingPlaces.map(place => ({
         name: place.name,
         address: place.address,
@@ -52,18 +53,25 @@ export async function getNearbyPlaces(
     }
 
     // Call our edge function to get places from Google Places API
-    const response = await fetch(`/api/get-nearby-places?lat=${latitude}&lng=${longitude}&radius=${radius}`);
+    const apiUrl = `https://rtbicjimopzlqpodwjcm.supabase.co/functions/v1/get-nearby-places?lat=${latitude}&lng=${longitude}&radius=${radius}`;
+    console.log(`Fetching places from: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl);
     
     if (!response.ok) {
-      throw new Error(`Error fetching places: ${response.statusText}`);
+      const errorData = await response.text();
+      throw new Error(`Error fetching places: ${response.status} - ${errorData}`);
     }
 
     const data = await response.json();
     
     if (!data.results || data.results.length === 0) {
+      console.log("No places found from Google Places API");
       return [];
     }
 
+    console.log(`Found ${data.results.length} places from Google Places API`);
+    
     // Process the results
     return data.results.map((place: GooglePlace) => ({
       name: place.name,

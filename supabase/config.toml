@@ -1,1 +1,5 @@
+
 project_id = "rtbicjimopzlqpodwjcm"
+
+[functions.get-nearby-places]
+verify_jwt = false
