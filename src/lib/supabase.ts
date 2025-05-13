@@ -2,14 +2,17 @@
 import { createClient } from '@supabase/supabase-js';
 
 // These environment variables are set by Lovable when you integrate with Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase credentials. Make sure you have integrated Supabase with your Lovable project.');
+  console.error('Missing Supabase credentials. Make sure you have integrated Supabase with your Lovable project and refreshed the page.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  supabaseUrl || '',
+  supabaseAnonKey || ''
+);
 
 // Type definitions for our database schema
 export type VenueType = 'Bar' | 'Restaurant' | 'Club' | 'Event' | 'Other';
