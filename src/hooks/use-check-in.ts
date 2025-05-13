@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCheckIn } from "@/lib/supabase";
@@ -87,7 +88,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           
           console.log("[useCheckIn] Check-in completed successfully:", resultData);
           return resultData[0];
-        } catch (insertError: any) {
+        } catch (insertError: any) { // Fixed: explicitly typing the error as any
           console.error("[useCheckIn] Check-in insert error:", insertError);
           console.error("[useCheckIn] Error details:", {
             message: insertError.message,
@@ -101,7 +102,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           alert("Check-in failed: " + (insertError.message || "Unknown error"));
           throw insertError;
         }
-      } catch (error: any) {
+      } catch (error: any) { // Fixed: explicitly typing the error as any
         console.error("[useCheckIn] Check-in process error:", error);
         // Alert for immediate feedback during debugging
         alert("Check-in failed: " + (error.message || "Unknown error"));
@@ -175,7 +176,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       // Call the mutation with explicit error handling
       console.log("[useCheckIn] Triggering check-in mutation...");
       checkInMutation.mutate({ data, userId, selectedPlace });
-    } catch (error: any) {
+    } catch (error: any) { // Fixed: explicitly typing the error as any
       // Catch any synchronous errors (should be rare with async mutation)
       console.error("[useCheckIn] Unexpected error during mutation trigger:", error);
       setIsSubmitting(false);
