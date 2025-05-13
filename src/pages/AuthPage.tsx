@@ -10,12 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import { MapPin } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -28,6 +30,7 @@ const AuthPage = () => {
   const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setVerificationSent(false);
     
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -42,6 +45,7 @@ const AuthPage = () => {
 
       if (error) throw error;
 
+      setVerificationSent(true);
       toast({
         title: 'Verification email sent',
         description: 'Please check your email to verify your account.',
@@ -151,6 +155,14 @@ const AuthPage = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {verificationSent && (
+                    <Alert className="bg-green-50 border-green-200">
+                      <AlertDescription className="text-green-700">
+                        Verification email sent! Please check your inbox and click the link to verify your account.
+                        You may close this page and come back after verification.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <Input 
@@ -186,8 +198,8 @@ const AuthPage = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full" type="submit" disabled={loading}>
-                    {loading ? 'Creating account...' : 'Sign Up'}
+                  <Button className="w-full" type="submit" disabled={loading || verificationSent}>
+                    {loading ? 'Creating account...' : verificationSent ? 'Email Sent' : 'Sign Up'}
                   </Button>
                 </CardFooter>
               </form>
