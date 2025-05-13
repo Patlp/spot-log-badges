@@ -11,6 +11,8 @@ export function toast(props: {
 }) {
   const { title, description, variant, duration = 5000 } = props;
   
+  console.log("[toast] Showing toast:", { title, description, variant, duration });
+  
   // Map our variants to Sonner variants
   const sonnerVariant = variant === "destructive" ? "error" : 
                          variant === "warning" ? "warning" : 

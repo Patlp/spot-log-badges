@@ -31,9 +31,16 @@ export function ManualCheckInForm({
   isSubmitting, 
   onSubmit
 }: ManualCheckInFormProps) {
+  console.log("[ManualCheckInForm] Render with isSubmitting:", isSubmitting);
+  
+  const handleSubmit = (values: CheckInFormValues) => {
+    console.log("[ManualCheckInForm] Form submit with values:", values);
+    onSubmit(values);
+  };
+  
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         {/* Venue Name */}
         <FormField
           control={form.control}

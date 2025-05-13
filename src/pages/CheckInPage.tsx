@@ -2,7 +2,7 @@
 import { useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +19,6 @@ import { useNearbyPlaces } from "@/hooks/use-nearby-places";
 
 const CheckInPage = () => {
   const { user } = useContext(AuthContext);
-  const { toast } = useToast();
   const navigate = useNavigate();
   
   // States for UI
@@ -41,6 +40,8 @@ const CheckInPage = () => {
     },
   });
   
+  console.log("[CheckInPage] Form default values set:", form.getValues());
+  
   // Use our custom hooks for places and check-in
   const { 
     useLocation, 
@@ -55,16 +56,26 @@ const CheckInPage = () => {
     fetchNearbyPlaces 
   } = useNearbyPlaces();
   
-  const { isSubmitting, handleCheckIn } = useCheckIn({
+  const { isSubmitting, checkInError, handleCheckIn } = useCheckIn({
     onSuccess: () => {
-      console.log("Check-in completed successfully from CheckInPage callback");
-      // Navigation is now handled inside the useCheckIn hook
+      console.log("[CheckInPage] Check-in completed successfully");
+      // The navigation is now handled inside the useCheckIn hook after a small delay
     }
+  });
+
+  console.log("[CheckInPage] Render state:", { 
+    user: !!user, 
+    isSubmitting, 
+    activeTab, 
+    hasSelectedPlace: !!selectedPlace,
+    formValues: form.getValues(),
+    nearbyPlacesCount: nearbyPlaces.length
   });
 
   // Update form when a place is selected
   useEffect(() => {
     if (selectedPlace) {
+      console.log("[CheckInPage] Selected place changed, updating form:", selectedPlace);
       form.setValue("venue_name", selectedPlace.name);
       form.setValue("location", selectedPlace.address);
       form.setValue("venue_type", selectedPlace.types.some(t => t === 'restaurant' || t === 'food') 
@@ -80,6 +91,7 @@ const CheckInPage = () => {
   
   // Force a retry of location and place fetching
   const handleRetryFetchPlaces = useCallback(async () => {
+    console.log("[CheckInPage] Retrying fetch places");
     if (locationCoords) {
       fetchNearbyPlaces(locationCoords.lat, locationCoords.lng);
     } else {
@@ -89,43 +101,48 @@ const CheckInPage = () => {
 
   // Switch to manual entry tab
   const handleSwitchToManual = useCallback(() => {
+    console.log("[CheckInPage] Switching to manual entry tab");
     setActiveTab("manual");
   }, []);
 
   // Submit handler for the form
   const onSubmit = useCallback((data: CheckInFormValues) => {
+    console.log("[CheckInPage] Submitting check-in data:", data);
+    
     if (!user) {
       toast({
         title: "Authentication Required",
         description: "You must be logged in to check in.",
-        variant: "destructive",
+        duration: 5000,
       });
       return;
     }
     
-    console.log("Submitting check-in data:", data);
     try {
       handleCheckIn(data, user.id, selectedPlace);
-    } catch (error) {
-      console.error("Error during check-in submission:", error);
+    } catch (error: any) {
+      console.error("[CheckInPage] Error during check-in submission:", error);
       toast({
         title: "Check-in Failed",
         description: "There was an error processing your check-in. Please try again.",
-        variant: "destructive",
+        duration: 5000,
       });
     }
-  }, [user, handleCheckIn, selectedPlace, toast]);
+  }, [user, handleCheckIn, selectedPlace]);
 
   // Verify user authentication
   useEffect(() => {
     if (!user) {
+      console.log("[CheckInPage] No authenticated user, showing toast");
       toast({
         title: "Authentication Required",
         description: "You must be logged in to check in.",
-        variant: "destructive",
+        duration: 5000,
       });
+      // Optional: redirect to login page after a delay
+      // setTimeout(() => navigate('/auth'), 3000);
     }
-  }, [user, toast]);
+  }, [user, navigate]);
 
   return (
     <div className="max-w-lg mx-auto">

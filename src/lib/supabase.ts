@@ -184,7 +184,7 @@ export const createCheckIn = async (checkInData: {
 }) => {
   try {
     console.log("=== CREATING CHECK-IN (DIRECT IMPLEMENTATION) ===");
-    console.log("Check-in started", { testData: checkInData });
+    console.log("Check-in started", checkInData);
     
     // Validate required fields
     if (!checkInData.user_id) throw new Error("Missing user_id");
@@ -215,7 +215,7 @@ export const createCheckIn = async (checkInData: {
     
     if (error) {
       console.error("Insert failed with error:", error);
-      throw error;
+      throw new Error(error.message || "Failed to create check-in");
     }
     
     if (!data || data.length === 0) {

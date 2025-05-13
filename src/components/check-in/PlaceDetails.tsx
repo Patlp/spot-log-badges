@@ -10,7 +10,6 @@ import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from "@/hooks/use-toast";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -28,27 +27,15 @@ export function PlaceDetails({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = (values: any) => {
-    if (isSubmitting) {
-      console.log("Already submitting, ignoring click");
-      return; // Prevent double submissions
-    }
-    
     // Clear any previous error
     setSubmitError(null);
-    console.log("PlaceDetails: Handling form submission with values:", values);
+    console.log("PlaceDetails: Submitting form with values:", values);
     
-    // Call the onSubmit function, but catch any synchronous errors
     try {
       onSubmit(values);
     } catch (error: any) {
-      console.error("Synchronous error in handleSubmit:", error);
+      console.error("PlaceDetails: Synchronous error during submit:", error);
       setSubmitError(error.message || "An unexpected error occurred");
-      toast({
-        title: "Error",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-        duration: 5000,
-      });
     }
   };
 

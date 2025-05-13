@@ -28,9 +28,9 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       selectedPlace: Place | null 
     }) => {
       try {
-        console.log("Starting check-in process with data:", data);
-        console.log("User ID:", userId);
-        console.log("Selected Place:", selectedPlace);
+        console.log("[useCheckIn] Starting check-in process with data:", data);
+        console.log("[useCheckIn] User ID:", userId);
+        console.log("[useCheckIn] Selected Place:", selectedPlace);
         
         if (!userId) {
           throw new Error("User ID is required for check-in");
@@ -48,7 +48,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         
         // Try to save venue if available
         if (selectedPlace) {
-          console.log("Saving venue data:", selectedPlace);
+          console.log("[useCheckIn] Saving venue data:", selectedPlace);
           try {
             await saveVenue({
               place_id: selectedPlace.place_id,
@@ -58,30 +58,31 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
               latitude: selectedPlace.latitude,
               longitude: selectedPlace.longitude,
             });
+            console.log("[useCheckIn] Venue saved successfully");
           } catch (venueError) {
-            console.error("Venue storage error:", venueError);
+            console.error("[useCheckIn] Venue storage error:", venueError);
             // Continue with check-in even if venue storage fails
           }
         }
         
         // Create the check-in
-        console.log("Creating check-in with data:", checkInData);
+        console.log("[useCheckIn] Creating check-in with data:", checkInData);
         
         const checkInResult = await createCheckIn(checkInData);
-        console.log("Check-in created successfully:", checkInResult);
+        console.log("[useCheckIn] Check-in created successfully:", checkInResult);
         return { success: true, data: checkInResult };
       } catch (error: any) {
-        console.error("Check-in process error:", error);
+        console.error("[useCheckIn] Check-in process error:", error);
         throw error;
       }
     },
     onMutate: () => {
-      console.log("Check-in mutation starting");
+      console.log("[useCheckIn] Mutation starting");
       setIsSubmitting(true);
       setCheckInError(null);
     },
     onSuccess: (data) => {
-      console.log("Check-in mutation succeeded:", data);
+      console.log("[useCheckIn] Mutation succeeded:", data);
       
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -91,23 +92,22 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       toast({
         title: "Check-in Successful!",
         description: "Your check-in has been recorded.",
-        variant: "default",
         duration: 5000,
       });
-      
-      // Navigate to profile page
-      navigate("/profile");
       
       // Call the success callback if provided
       if (options?.onSuccess) {
         options.onSuccess();
       }
-      
-      // Reset submission state
-      setIsSubmitting(false);
+
+      // Small delay before navigation to ensure toast is shown
+      setTimeout(() => {
+        navigate("/profile");
+        setIsSubmitting(false);
+      }, 500);
     },
     onError: (error: any) => {
-      console.error("Check-in mutation failed:", error);
+      console.error("[useCheckIn] Mutation failed:", error);
       
       // Set the error state
       setCheckInError(error.message || "Unknown error occurred");
@@ -116,7 +116,6 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       toast({
         title: "Check-in Failed",
         description: `Error: ${error.message || "Unknown error occurred"}`,
-        variant: "destructive",
         duration: 7000, // Give more time to read error messages
       });
       
@@ -124,20 +123,30 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       setIsSubmitting(false);
     },
     onSettled: () => {
-      // Ensure isSubmitting is reset regardless of success/failure
-      console.log("Check-in mutation settled");
-      setIsSubmitting(false);
+      // Ensure state is reset after a timeout if not already reset
+      const timeoutId = setTimeout(() => {
+        if (isSubmitting) {
+          console.log("[useCheckIn] Force resetting isSubmitting state");
+          setIsSubmitting(false);
+        }
+      }, 10000); // 10 seconds safety timeout
+      
+      return () => clearTimeout(timeoutId);
     },
   });
 
   const handleCheckIn = (data: CheckInFormValues, userId: string, selectedPlace: Place | null) => {
-    console.log("handleCheckIn called with:", { data, userId });
+    console.log("[useCheckIn] handleCheckIn called with:", { data, userId });
+    
+    if (isSubmitting) {
+      console.log("[useCheckIn] Already submitting, ignoring duplicate call");
+      return;
+    }
     
     if (!userId) {
       toast({
         title: "Authentication Required",
         description: "You must be logged in to check in.",
-        variant: "destructive",
         duration: 5000,
       });
       return;
@@ -148,14 +157,13 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       toast({
         title: "Missing Information",
         description: "Please fill out all required fields.",
-        variant: "destructive",
         duration: 5000,
       });
       return;
     }
     
     // Call the mutation
-    console.log("Triggering check-in mutation...");
+    console.log("[useCheckIn] Triggering check-in mutation...");
     checkInMutation.mutate({ data, userId, selectedPlace });
   };
 
