@@ -8,7 +8,7 @@ export const useToast = useToastOrig;
 export function toast(props: { title?: string; description?: string; variant?: "default" | "destructive" | "warning" | undefined; duration?: number }) {
   return toastOrig({
     ...props,
-    // Default duration of 5000ms (5 seconds) if not specified
-    duration: props.duration ?? 5000,
+    // We need to remove duration from props before passing to toastOrig since it doesn't accept it
+    duration: undefined, // Remove this prop before spreading into toastOrig
   });
 }

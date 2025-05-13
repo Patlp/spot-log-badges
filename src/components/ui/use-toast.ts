@@ -15,6 +15,7 @@ type ToasterToastProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   variant?: "default" | "destructive" | "warning"
+  duration?: number // Added duration property to the type
 }
 
 const actionTypes = {
@@ -132,6 +133,7 @@ interface ToastProps {
   description?: React.ReactNode
   action?: ToastActionElement
   variant?: "default" | "destructive" | "warning"
+  duration?: number // Added duration to match our implementation
 }
 
 // Define the return type of the toast function explicitly
@@ -143,12 +145,14 @@ interface ToastReturn {
 
 function toast(props: ToastProps): ToastReturn {
   const id = props.id || genId();
+  const { duration = 5000 } = props; // Default to 5000ms if not specified
 
   const update = (props: Partial<ToasterToastProps>) =>
     dispatch({
       type: actionTypes.UPDATE_TOAST,
       toast: { ...props, id },
     })
+    
   const dismiss = () => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id })
 
   dispatch({
@@ -161,6 +165,11 @@ function toast(props: ToastProps): ToastReturn {
       },
     },
   })
+  
+  // Auto-dismiss after specified duration
+  if (duration !== Infinity) {
+    setTimeout(dismiss, duration);
+  }
 
   return {
     id,
