@@ -195,8 +195,8 @@ export const createCheckIn = async (checkInData: {
     if (!checkInData.check_in_time) throw new Error("Missing check_in_time");
     
     // Validate venue_type is one of the allowed values
-    const venueTypeValues: VenueType[] = ["Restaurant", "Bar", "Club", "Event", "Other"];
-    if (!venueTypeValues.includes(checkInData.venue_type as VenueType)) {
+    const venueTypeValues: string[] = ["Restaurant", "Bar", "Club", "Event", "Other"];
+    if (!venueTypeValues.includes(checkInData.venue_type)) {
       throw new Error(`Invalid venue_type. Must be one of: ${venueTypeValues.join(', ')}`);
     }
     
@@ -204,7 +204,7 @@ export const createCheckIn = async (checkInData: {
     const payload = {
       user_id: checkInData.user_id,
       venue_name: checkInData.venue_name,
-      venue_type: checkInData.venue_type as VenueType, // Cast to VenueType after validation
+      venue_type: checkInData.venue_type, // Don't cast here, just pass the string after validation
       location: checkInData.location,
       check_in_time: checkInData.check_in_time,
       notes: checkInData.notes || null,

@@ -118,7 +118,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       }, 500);
     },
     onError: (error: any) => {
-      console.error("[useCheckIn] Mutation failed:", error);
+      console.log("[useCheckIn] Mutation failed:", error);
       
       // Reset submission state immediately on error
       setIsSubmitting(false);
