@@ -13,6 +13,7 @@ interface UseCheckInOptions {
 
 export const useCheckIn = (options?: UseCheckInOptions) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkInError, setCheckInError] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -66,19 +67,24 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         
         // Create the check-in
         console.log("Creating check-in with data:", checkInData);
-        const checkInResult = await createCheckIn(checkInData);
         
-        console.log("Check-in created successfully:", checkInResult);
-        return { success: true, data: checkInResult };
+        try {
+          const checkInResult = await createCheckIn(checkInData);
+          console.log("Check-in created successfully:", checkInResult);
+          return { success: true, data: checkInResult };
+        } catch (error: any) {
+          console.error("Check-in creation error:", error);
+          throw new Error(`Check-in failed: ${error.message || "Unknown error"}`);
+        }
       } catch (error: any) {
         console.error("Check-in process error:", error);
-        console.error("Error message:", error.message);
         throw error;
       }
     },
     onMutate: () => {
       console.log("Check-in mutation starting");
       setIsSubmitting(true);
+      setCheckInError(null);
     },
     onSuccess: (data) => {
       console.log("Check-in mutation succeeded:", data);
@@ -107,6 +113,9 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
     },
     onError: (error: any) => {
       console.error("Check-in mutation failed:", error);
+      
+      // Set the error state
+      setCheckInError(error.message || "Unknown error occurred");
       
       // Show error toast with specific message
       toast({
@@ -155,6 +164,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
 
   return {
     isSubmitting,
+    checkInError,
     handleCheckIn
   };
 };

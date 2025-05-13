@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -117,8 +118,8 @@ export const createCheckIn = async (checkInData: {
   notes?: string;
 }) => {
   try {
-    console.log("=== CREATING CHECK-IN (SIMPLIFIED VERSION) ===");
-    console.log("Full payload:", JSON.stringify(checkInData, null, 2));
+    console.log("=== CREATING CHECK-IN (DIRECT IMPLEMENTATION) ===");
+    console.log("Check-in started", { testData: checkInData });
     
     // Validate required fields
     if (!checkInData.user_id) throw new Error("Missing user_id");
@@ -137,23 +138,28 @@ export const createCheckIn = async (checkInData: {
       notes: checkInData.notes || null,
     };
     
-    console.log("Using clean payload:", JSON.stringify(payload, null, 2));
+    console.log("Using payload:", JSON.stringify(payload, null, 2));
     
-    // Simple and direct insert using the standard client
+    // Simple and direct insert using EXACTLY the requested structure
     const { data, error } = await supabase
       .from("check_ins")
       .insert([payload])
       .select();
     
-    console.log("Check-in result:", { data, error });
+    console.log("Insert result:", { data, error });
     
     if (error) {
-      console.error("Insert failed:", error);
+      console.error("Insert failed with error:", error);
       throw error;
     }
     
+    if (!data || data.length === 0) {
+      console.error("No data returned after successful insert");
+      throw new Error("No data returned from insert operation");
+    }
+    
     console.log("Insert succeeded:", data);
-    return data && data.length > 0 ? data[0] : null;
+    return data[0];
     
   } catch (error: any) {
     console.error("Final createCheckIn error:", error);

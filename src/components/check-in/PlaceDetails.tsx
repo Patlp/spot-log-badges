@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, AlertTriangle } from "lucide-react";
 import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -24,6 +25,7 @@ export function PlaceDetails({
   onSubmit
 }: PlaceDetailsProps) {
   const [localSubmitting, setLocalSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   
   // Reset local submitting state when isSubmitting changes to false
   useEffect(() => {
@@ -42,6 +44,8 @@ export function PlaceDetails({
         console.log("Submission timeout reached, resetting UI");
         if (localSubmitting) {
           setLocalSubmitting(false);
+          setSubmitError("Check-in timed out. The request may still be processing or failed silently. Please check your console logs.");
+          console.log("Mutation chain never resolved.");
         }
       }, 8000); // 8 second timeout
     }
@@ -57,9 +61,19 @@ export function PlaceDetails({
       return; // Prevent double submissions
     }
     
+    // Clear any previous error
+    setSubmitError(null);
     console.log("PlaceDetails: Handling form submission with values:", values);
     setLocalSubmitting(true);
-    onSubmit(values);
+    
+    // Call the onSubmit function, but catch any synchronous errors
+    try {
+      onSubmit(values);
+    } catch (error: any) {
+      console.error("Synchronous error in handleSubmit:", error);
+      setSubmitError(error.message || "An unexpected error occurred");
+      setLocalSubmitting(false);
+    }
   };
 
   // Use a combined submitting state to ensure UI reflects submission properly
@@ -68,6 +82,13 @@ export function PlaceDetails({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 border-t pt-4 mt-4">
+        {submitError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex justify-between items-center">
           <div>
             <h3 className="font-medium">{selectedPlace.name}</h3>
