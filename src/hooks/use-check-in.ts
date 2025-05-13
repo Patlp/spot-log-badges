@@ -25,6 +25,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       userId: string; 
       selectedPlace: Place | null 
     }) => {
+      console.log("Starting check-in process with data:", data);
       try {
         // Create the check-in
         const checkInData = {
@@ -38,6 +39,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         
         if (selectedPlace) {
           // Store the venue in our venues table for future reference
+          console.log("Saving venue data:", selectedPlace);
           try {
             await saveVenue({
               place_id: selectedPlace.place_id,
@@ -53,7 +55,9 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           }
         }
         
+        console.log("Creating check-in with data:", checkInData);
         const checkInResult = await createCheckIn(checkInData);
+        console.log("Check-in created:", checkInResult);
         
         // Check if it's a first visit to this venue
         const { data: existingCheckins, error: checkError } = await supabase
@@ -63,17 +67,22 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           .eq("venue_name", data.venue_name)
           .order("created_at", { ascending: true });
           
-        if (checkError) throw checkError;
+        if (checkError) {
+          console.error("Error checking existing check-ins:", checkError);
+          throw checkError;
+        }
+        
+        console.log("Found existing check-ins:", existingCheckins?.length || 0);
         
         // Determine which badge to award
         let badgeType = "";
         let badgeIcon = "";
         
-        if (existingCheckins.length === 1) {
+        if (existingCheckins && existingCheckins.length === 1) {
           // First time at this venue
           badgeType = "first_visit";
           badgeIcon = "map-pin";
-        } else if (existingCheckins.length === 5) {
+        } else if (existingCheckins && existingCheckins.length === 5) {
           // Fifth visit earns Regular badge
           badgeType = "regular";
           badgeIcon = "star";
@@ -81,6 +90,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         
         // Award a badge if applicable
         if (badgeType) {
+          console.log("Awarding badge:", badgeType);
           const { error: badgeError } = await supabase
             .from("badges")
             .insert([
@@ -93,7 +103,10 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
               },
             ]);
             
-          if (badgeError) throw badgeError;
+          if (badgeError) {
+            console.error("Error awarding badge:", badgeError);
+            throw badgeError;
+          }
           
           // Update the profile stats
           const { data: profileData } = await supabase
@@ -103,6 +116,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
             .single();
             
           if (profileData) {
+            console.log("Updating profile stats:", profileData);
             await supabase
               .from("profiles")
               .update({
@@ -123,6 +137,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
             .single();
             
           if (profileData) {
+            console.log("Updating only check-in count:", profileData.total_check_ins + 1);
             await supabase
               .from("profiles")
               .update({
@@ -139,15 +154,18 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       }
     },
     onMutate: () => {
+      console.log("Check-in mutation starting");
       setIsSubmitting(true);
     },
     onSuccess: (data, variables) => {
+      console.log("Check-in successful:", data);
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       queryClient.invalidateQueries({ queryKey: ["badges"] });
       queryClient.invalidateQueries({ queryKey: ["allCheckIns"] });
       
+      // Show success toast immediately
       if (data.badgeEarned) {
         toast({
           title: "Badge Earned! 🏆",
@@ -166,6 +184,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       
       // Call the success callback if provided
       if (options?.onSuccess) {
+        console.log("Calling onSuccess callback");
         options.onSuccess();
       }
     },
@@ -181,6 +200,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
   });
 
   const handleCheckIn = (data: CheckInFormValues, userId: string, selectedPlace: Place | null) => {
+    console.log("handleCheckIn called with:", { data, userId });
     checkInMutation.mutate({ data, userId, selectedPlace });
   };
 

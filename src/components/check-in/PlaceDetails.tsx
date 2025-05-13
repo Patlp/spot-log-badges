@@ -27,7 +27,10 @@ export function PlaceDetails({
   const [submitted, setSubmitted] = useState(false);
   
   const handleSubmit = (values: any) => {
+    if (submitted) return; // Prevent double submissions
+    
     setSubmitted(true);
+    
     try {
       onSubmit(values);
     } catch (error) {
