@@ -18,7 +18,7 @@ serve(async (req) => {
   const url = new URL(req.url);
   const lat = url.searchParams.get("lat");
   const lng = url.searchParams.get("lng");
-  const radius = url.searchParams.get("radius") || "300";
+  const radius = url.searchParams.get("radius") || "500";
 
   // Validate parameters
   if (!lat || !lng) {
@@ -50,13 +50,29 @@ serve(async (req) => {
       throw new Error(`Google Places API responded with status: ${response.status}`);
     }
     
-    const data = await response.json();
+    // Parse response as text first to check for malformed JSON
+    const responseText = await response.text();
+    let data;
+    
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse Google Places API response:", parseError);
+      throw new Error("Invalid response from Google Places API");
+    }
+    
     console.log(`Found ${data.results?.length || 0} places`);
 
-    // Return the results
+    // Return the results with proper headers
     return new Response(
       JSON.stringify(data),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=300" // Cache for 5 minutes
+        } 
+      }
     );
   } catch (error) {
     console.error("Error in get-nearby-places function:", error);

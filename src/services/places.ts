@@ -31,26 +31,31 @@ export async function getNearbyPlaces(
 ): Promise<PlaceDetails[]> {
   try {
     // First check if we already have places saved in the database for these coordinates
-    const { data: existingPlaces, error } = await supabase
-      .from('venues')
-      .select('*')
-      .filter('latitude', 'gte', latitude - 0.005) // Increased range
-      .filter('latitude', 'lte', latitude + 0.005)
-      .filter('longitude', 'gte', longitude - 0.005)
-      .filter('longitude', 'lte', longitude + 0.005);
-    
-    if (error) {
-      console.error("Error fetching saved places:", error);
-    } else if (existingPlaces && existingPlaces.length > 0) {
-      console.log(`Found ${existingPlaces.length} existing places in our database`);
-      return existingPlaces.map(place => ({
-        name: place.name,
-        address: place.address,
-        types: place.types,
-        place_id: place.place_id,
-        latitude: place.latitude,
-        longitude: place.longitude,
-      }));
+    try {
+      const { data: existingPlaces, error } = await supabase
+        .from('venues')
+        .select('*')
+        .filter('latitude', 'gte', latitude - 0.005) // Increased range
+        .filter('latitude', 'lte', latitude + 0.005)
+        .filter('longitude', 'gte', longitude - 0.005)
+        .filter('longitude', 'lte', longitude + 0.005);
+      
+      if (error) {
+        console.error("Error fetching saved places:", error);
+      } else if (existingPlaces && existingPlaces.length > 0) {
+        console.log(`Found ${existingPlaces.length} existing places in our database`);
+        return existingPlaces.map(place => ({
+          name: place.name,
+          address: place.address,
+          types: place.types,
+          place_id: place.place_id,
+          latitude: place.latitude,
+          longitude: place.longitude,
+        }));
+      }
+    } catch (dbError) {
+      // If database query fails, log and continue to API query
+      console.error("Database query error:", dbError);
     }
 
     console.log(`No cached places found, fetching from API at ${latitude}, ${longitude}`);
@@ -67,7 +72,17 @@ export async function getNearbyPlaces(
       throw new Error(`Error fetching places: ${response.status} - ${errorData}`);
     }
 
-    const data = await response.json();
+    // Use text() and then JSON.parse to avoid SyntaxError with malformed JSON
+    const responseText = await response.text();
+    console.log("Raw API response:", responseText.substring(0, 100) + "..."); // Log a snippet of response
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError, "Response:", responseText);
+      throw new Error("Invalid response format from places API");
+    }
     
     if (!data.results || data.results.length === 0) {
       console.log("No places found from Google Places API");
@@ -76,8 +91,8 @@ export async function getNearbyPlaces(
 
     console.log(`Found ${data.results.length} places from Google Places API`);
     
-    // Process the results
-    return data.results.map((place: GooglePlace) => ({
+    // Process the results, sort by proximity to user
+    const places = data.results.map((place: GooglePlace) => ({
       name: place.name,
       address: place.vicinity,
       types: place.types,
@@ -85,6 +100,20 @@ export async function getNearbyPlaces(
       latitude: place.geometry.location.lat,
       longitude: place.geometry.location.lng,
     }));
+    
+    // Calculate distance to sort by proximity
+    const placesWithDistance = places.map(place => {
+      const distance = calculateDistance(
+        latitude, 
+        longitude, 
+        place.latitude, 
+        place.longitude
+      );
+      return { ...place, distance };
+    });
+    
+    // Sort by distance (closest first)
+    return placesWithDistance.sort((a, b) => a.distance - b.distance);
   } catch (error) {
     console.error("Error in getNearbyPlaces:", error);
     // Show a toast with the error
@@ -95,6 +124,22 @@ export async function getNearbyPlaces(
     });
     return [];
   }
+}
+
+// Haversine formula to calculate distance between two coordinates in meters
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3; // Earth radius in meters
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c; // Distance in meters
 }
 
 export function mapGoogleTypeToVenueType(types: string[]): "Restaurant" | "Bar" | "Club" | "Event" | "Other" {

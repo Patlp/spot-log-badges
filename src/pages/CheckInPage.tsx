@@ -1,3 +1,4 @@
+
 import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -5,44 +6,18 @@ import { supabase, createCheckIn, VenueType } from "../lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { MapPin, Save, Clock, Loader2, MapIcon, LocateFixed, Search, Building, AlertTriangle } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useGeolocation } from "@/hooks/use-geolocation";
-import { getNearbyPlaces, mapGoogleTypeToVenueType } from "@/services/places";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card as CardComponent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { getNearbyPlaces } from "@/services/places";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LocationDetector } from "@/components/LocationDetector";
+import { Building, MapPin } from "lucide-react";
 
-// Define the form validation schema using zod
-const checkInSchema = z.object({
-  venue_name: z.string().min(2, { message: "Venue name must be at least 2 characters" }),
-  venue_type: z.enum(["Bar", "Restaurant", "Club", "Event", "Other"]),
-  location: z.string().min(2, { message: "Location must be at least 2 characters" }),
-  check_in_time: z.string(),
-  notes: z.string().optional(),
-});
-
-type CheckInFormValues = z.infer<typeof checkInSchema>;
-
-type PlaceOption = {
-  name: string;
-  address: string;
-  place_id: string;
-  types: string[];
-  latitude: number;
-  longitude: number;
-};
+// Import our refactored components
+import { LocationControl } from "@/components/check-in/LocationControl";
+import { PlacesList, Place } from "@/components/check-in/PlacesList";
+import { PlaceDetails } from "@/components/check-in/PlaceDetails";
+import { ManualCheckInForm, checkInSchema, CheckInFormValues } from "@/components/check-in/ManualCheckInForm";
 
 const CheckInPage = () => {
   const { user } = useContext(AuthContext);
@@ -52,8 +27,8 @@ const CheckInPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState(false);
   const [useLocation, setUseLocation] = useState(false);
-  const [nearbyPlaces, setNearbyPlaces] = useState<PlaceOption[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<PlaceOption | null>(null);
+  const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activeTab, setActiveTab] = useState<string>("manual");
   const [locationCoords, setLocationCoords] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -78,7 +53,14 @@ const CheckInPage = () => {
     if (selectedPlace) {
       form.setValue("venue_name", selectedPlace.name);
       form.setValue("location", selectedPlace.address);
-      form.setValue("venue_type", mapGoogleTypeToVenueType(selectedPlace.types));
+      form.setValue("venue_type", selectedPlace.types.some(t => t === 'restaurant' || t === 'food') 
+        ? "Restaurant" 
+        : selectedPlace.types.some(t => t === 'bar') 
+          ? "Bar" 
+          : selectedPlace.types.some(t => t === 'night_club') 
+            ? "Club" 
+            : "Other"
+      );
     }
   }, [selectedPlace, form]);
 
@@ -151,7 +133,7 @@ const CheckInPage = () => {
   };
 
   // Select a place from the nearby places list
-  const handleSelectPlace = (place: PlaceOption) => {
+  const handleSelectPlace = (place: Place) => {
     setSelectedPlace(place);
   };
 
@@ -162,6 +144,11 @@ const CheckInPage = () => {
     } else {
       setUseLocation(true);
     }
+  };
+
+  // Switch to manual entry tab
+  const handleSwitchToManual = () => {
+    setActiveTab("manual");
   };
 
   // Mutation for check-in submission
@@ -184,18 +171,23 @@ const CheckInPage = () => {
         
         if (selectedPlace) {
           // Store the venue in our venues table for future reference
-          const { error: venueError } = await supabase.from("venues").upsert({
-            place_id: selectedPlace.place_id,
-            name: selectedPlace.name,
-            address: selectedPlace.address,
-            types: selectedPlace.types,
-            latitude: selectedPlace.latitude,
-            longitude: selectedPlace.longitude,
-          }, {
-            onConflict: "place_id"
-          });
-          
-          if (venueError) console.error("Error storing venue:", venueError);
+          try {
+            const { error: venueError } = await supabase.from("venues").upsert({
+              place_id: selectedPlace.place_id,
+              name: selectedPlace.name,
+              address: selectedPlace.address,
+              types: selectedPlace.types,
+              latitude: selectedPlace.latitude,
+              longitude: selectedPlace.longitude,
+            }, {
+              onConflict: "place_id"
+            });
+            
+            if (venueError) console.error("Error storing venue:", venueError);
+          } catch (venueError) {
+            console.error("Venue storage error:", venueError);
+            // Continue with check-in even if venue storage fails
+          }
         }
         
         await createCheckIn(checkInData);
@@ -334,44 +326,15 @@ const CheckInPage = () => {
         </CardHeader>
 
         <CardContent>
-          {/* Enhanced Location Button with better Safari support */}
-          <div className="mb-8">
-            <Button
-              type="button"
-              variant={useLocation ? "default" : "outline"}
-              className="w-full"
-              onClick={handleToggleLocation}
-              disabled={isLoadingPlaces}
-            >
-              {isLoadingPlaces ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Finding places nearby...
-                </>
-              ) : useLocation ? (
-                <>
-                  <LocateFixed className="mr-2 h-4 w-4" />
-                  Using your location • Tap to refresh
-                </>
-              ) : (
-                <>
-                  <LocateFixed className="mr-2 h-4 w-4" />
-                  Find places near me
-                </>
-              )}
-            </Button>
-
-            {/* Location Detector Component */}
-            {useLocation && (
-              <div className="mt-2">
-                <LocationDetector 
-                  onLocationFound={handleLocationFound}
-                  onLocationError={handleLocationError}
-                  onLoadingChange={handleLoadingChange}
-                />
-              </div>
-            )}
-          </div>
+          {/* Location Control Component */}
+          <LocationControl 
+            useLocation={useLocation}
+            isLoadingPlaces={isLoadingPlaces}
+            onToggleLocation={handleToggleLocation}
+            onLocationFound={handleLocationFound}
+            onLocationError={handleLocationError}
+            onLoadingChange={handleLoadingChange}
+          />
 
           {/* Tabs for Manual or Nearby Places */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
@@ -393,242 +356,35 @@ const CheckInPage = () => {
 
             {/* Manual Entry Tab */}
             <TabsContent value="manual" className="pt-4">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  {/* Venue Name */}
-                  <FormField
-                    control={form.control}
-                    name="venue_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Venue Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Cloudtop Bar" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Venue Type */}
-                  <FormField
-                    control={form.control}
-                    name="venue_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Venue Type</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select venue type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Restaurant">Restaurant</SelectItem>
-                            <SelectItem value="Bar">Bar</SelectItem>
-                            <SelectItem value="Club">Club</SelectItem>
-                            <SelectItem value="Event">Event</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Location */}
-                  <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. New York, NY" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Date/Time */}
-                  <FormField
-                    control={form.control}
-                    name="check_in_time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date & Time</FormLabel>
-                        <FormControl>
-                          <Input type="datetime-local" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Notes */}
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes (optional)</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="How was it? Add any thoughts or vibes here..."
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Checking In...
-                      </>
-                    ) : (
-                      <>
-                        <MapPin className="mr-2 h-4 w-4" />
-                        Check In
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </Form>
+              <ManualCheckInForm 
+                form={form} 
+                isSubmitting={isSubmitting} 
+                onSubmit={onSubmit}
+              />
             </TabsContent>
 
-            {/* Nearby Places Tab with enhanced error handling */}
+            {/* Nearby Places Tab */}
             <TabsContent value="nearby" className="pt-4">
               <div className="mb-4">
                 <h3 className="text-lg font-medium mb-3">Select a place to check in</h3>
-              
-                {isLoadingPlaces ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                ) : nearbyPlaces.length === 0 ? (
-                  <Alert>
-                    <AlertTitle>No places found</AlertTitle>
-                    <AlertDescription>
-                      <p>No places found nearby. Try these options:</p>
-                      <div className="flex gap-2 mt-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={handleRetryFetchPlaces}
-                        >
-                          <LocateFixed className="mr-2 h-3 w-3" />
-                          Retry
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setActiveTab("manual")}
-                        >
-                          <Building className="mr-2 h-3 w-3" />
-                          Manual Entry
-                        </Button>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="grid gap-2 max-h-64 overflow-y-auto">
-                    {nearbyPlaces.map((place) => (
-                      <CardComponent 
-                        key={place.place_id}
-                        className={`cursor-pointer p-3 transition ${selectedPlace?.place_id === place.place_id ? 'border-2 border-primary ring-1 ring-primary' : 'hover:border-primary/50'}`}
-                        onClick={() => handleSelectPlace(place)}
-                      >
-                        <div className="flex justify-between">
-                          <div>
-                            <h4 className="font-medium">{place.name}</h4>
-                            <p className="text-sm text-muted-foreground">{place.address}</p>
-                          </div>
-                          <Badge>{mapGoogleTypeToVenueType(place.types)}</Badge>
-                        </div>
-                      </CardComponent>
-                    ))}
-                  </div>
-                )}
+                
+                <PlacesList 
+                  places={nearbyPlaces}
+                  isLoading={isLoadingPlaces}
+                  selectedPlace={selectedPlace}
+                  onSelectPlace={handleSelectPlace}
+                  onRetryFetch={handleRetryFetchPlaces}
+                  onSwitchToManual={handleSwitchToManual}
+                />
               </div>
 
               {selectedPlace && (
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 border-t pt-4 mt-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-medium">{selectedPlace.name}</h3>
-                        <p className="text-sm text-muted-foreground">{selectedPlace.address}</p>
-                      </div>
-                      <Badge>{mapGoogleTypeToVenueType(selectedPlace.types)}</Badge>
-                    </div>
-
-                    {/* Date/Time for selected place */}
-                    <FormField
-                      control={form.control}
-                      name="check_in_time"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date & Time</FormLabel>
-                          <FormControl>
-                            <Input type="datetime-local" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Notes for selected place */}
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Notes (optional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="How was it? Add any thoughts or vibes here..."
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Checking In at {selectedPlace.name}...
-                        </>
-                      ) : (
-                        <>
-                          <MapPin className="mr-2 h-4 w-4" />
-                          Check In at {selectedPlace.name}
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </Form>
+                <PlaceDetails
+                  selectedPlace={selectedPlace}
+                  form={form}
+                  isSubmitting={isSubmitting}
+                  onSubmit={onSubmit}
+                />
               )}
               
               {!selectedPlace && !isLoadingPlaces && nearbyPlaces.length > 0 && (
