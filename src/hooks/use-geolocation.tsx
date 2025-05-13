@@ -27,16 +27,20 @@ export function useGeolocation() {
     setLocation(prev => ({ ...prev, loading: true, error: null }));
     
     try {
-      // Force a new location request each time to ensure we're getting fresh data
+      // Force a new location request with high accuracy and no caching
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        });
+        navigator.geolocation.getCurrentPosition(
+          resolve, 
+          reject, 
+          {
+            enableHighAccuracy: true,
+            timeout: 15000, // Longer timeout for slower connections
+            maximumAge: 0    // Never use cached position
+          }
+        );
       });
       
-      // If we got a position, treat it as permission granted regardless of what the browser says
+      // Successfully got position
       setLocation({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -47,7 +51,7 @@ export function useGeolocation() {
         requestPermission: async () => await requestGeolocationPermission(),
       });
       
-      // Double-check with the permissions API if available
+      // Double-check with permissions API if available (not on all browsers)
       if (navigator.permissions && navigator.permissions.query) {
         try {
           const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
@@ -62,17 +66,24 @@ export function useGeolocation() {
       }
     } catch (error) {
       const geoError = error as GeolocationPositionError;
-      let errorMessage = `Error getting location: ${geoError.message}`;
+      let errorMessage = `Error getting location: ${geoError.message || 'Unknown error'}`;
       let permissionState: 'denied' | 'prompt' | 'unknown' = 'unknown';
       
       // Handle specific error codes
       if (geoError.code === 1) { // PERMISSION_DENIED
-        errorMessage = "Location permission denied. Please enable location in your browser settings to use this feature.";
+        errorMessage = "Location permission denied. Please enable location in your browser settings.";
         permissionState = 'denied';
       } else if (geoError.code === 2) { // POSITION_UNAVAILABLE
         errorMessage = "Unable to determine your location. Please try again later.";
       } else if (geoError.code === 3) { // TIMEOUT
         errorMessage = "Location request timed out. Please check your connection and try again.";
+      }
+      
+      // For Safari-specific debugging
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (isSafari) {
+        errorMessage += " (Safari browser detected - Please check Safari-specific settings)";
+        console.log("Safari browser detected. Error:", errorMessage);
       }
       
       setLocation(prev => ({
@@ -85,6 +96,7 @@ export function useGeolocation() {
     }
   };
 
+  // On component mount, check for geolocation support
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocation(prev => ({
@@ -97,30 +109,38 @@ export function useGeolocation() {
       return;
     }
 
-    // Check for permission state if available in the browser
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' as PermissionName }).then(permissionStatus => {
-        setLocation(prev => ({
-          ...prev,
-          permissionState: permissionStatus.state as 'granted' | 'denied' | 'prompt'
-        }));
-
-        // Listen for permission changes
-        permissionStatus.addEventListener('change', () => {
+    // Attempt an immediate location request on mobile Safari
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+        (/^((?!chrome|android).)*safari/i.test(navigator.userAgent))) {
+      // For Safari/iOS we'll try to get location immediately  
+      requestGeolocationPermission();
+    }
+    // For other browsers, check permission first
+    else if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' as PermissionName })
+        .then(permissionStatus => {
           setLocation(prev => ({
             ...prev,
             permissionState: permissionStatus.state as 'granted' | 'denied' | 'prompt'
           }));
-        });
-        
-        // If permission is already granted, get location immediately
-        if (permissionStatus.state === 'granted') {
+
+          // Listen for permission changes
+          permissionStatus.addEventListener('change', () => {
+            setLocation(prev => ({
+              ...prev,
+              permissionState: permissionStatus.state as 'granted' | 'denied' | 'prompt'
+            }));
+          });
+          
+          // If permission is already granted, get location immediately
+          if (permissionStatus.state === 'granted') {
+            requestGeolocationPermission();
+          }
+        })
+        .catch(() => {
+          // If permissions query fails, try getting location directly anyway
           requestGeolocationPermission();
-        }
-      }).catch(() => {
-        // If permissions query fails, try getting location directly anyway
-        requestGeolocationPermission();
-      });
+        });
     } else {
       // If permissions API is not available, try getting location directly
       requestGeolocationPermission();

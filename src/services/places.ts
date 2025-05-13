@@ -1,5 +1,6 @@
 
 import { supabase } from '../lib/supabase';
+import { toast } from '@/hooks/use-toast';
 
 type GooglePlace = {
   place_id: string;
@@ -26,17 +27,17 @@ type PlaceDetails = {
 export async function getNearbyPlaces(
   latitude: number,
   longitude: number,
-  radius: number = 300
+  radius: number = 500 // Increased radius for better results
 ): Promise<PlaceDetails[]> {
   try {
     // First check if we already have places saved in the database for these coordinates
     const { data: existingPlaces, error } = await supabase
       .from('venues')
       .select('*')
-      .filter('latitude', 'gte', latitude - 0.003)
-      .filter('latitude', 'lte', latitude + 0.003)
-      .filter('longitude', 'gte', longitude - 0.003)
-      .filter('longitude', 'lte', longitude + 0.003);
+      .filter('latitude', 'gte', latitude - 0.005) // Increased range
+      .filter('latitude', 'lte', latitude + 0.005)
+      .filter('longitude', 'gte', longitude - 0.005)
+      .filter('longitude', 'lte', longitude + 0.005);
     
     if (error) {
       console.error("Error fetching saved places:", error);
@@ -52,14 +53,17 @@ export async function getNearbyPlaces(
       }));
     }
 
+    console.log(`No cached places found, fetching from API at ${latitude}, ${longitude}`);
+    
     // Call our edge function to get places from Google Places API
-    const apiUrl = `https://rtbicjimopzlqpodwjcm.supabase.co/functions/v1/get-nearby-places?lat=${latitude}&lng=${longitude}&radius=${radius}`;
+    const apiUrl = `${window.location.origin.includes('localhost') ? 'https://rtbicjimopzlqpodwjcm.supabase.co' : ''}/functions/v1/get-nearby-places?lat=${latitude}&lng=${longitude}&radius=${radius}`;
     console.log(`Fetching places from: ${apiUrl}`);
     
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
       const errorData = await response.text();
+      console.error(`API error (${response.status}):`, errorData);
       throw new Error(`Error fetching places: ${response.status} - ${errorData}`);
     }
 
@@ -83,6 +87,12 @@ export async function getNearbyPlaces(
     }));
   } catch (error) {
     console.error("Error in getNearbyPlaces:", error);
+    // Show a toast with the error
+    toast({ 
+      title: "Error finding places", 
+      description: error instanceof Error ? error.message : "Unknown error fetching places",
+      variant: "destructive"
+    });
     return [];
   }
 }

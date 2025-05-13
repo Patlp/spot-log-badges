@@ -1,4 +1,3 @@
-
 import { useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -23,6 +22,7 @@ import { Card as CardComponent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LocationDetector } from "@/components/LocationDetector";
 
 // Define the form validation schema using zod
 const checkInSchema = z.object({
@@ -54,11 +54,9 @@ const CheckInPage = () => {
   const [useLocation, setUseLocation] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState<PlaceOption[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PlaceOption | null>(null);
-  const geolocation = useGeolocation();
   const [activeTab, setActiveTab] = useState<string>("manual");
-  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
-  const [forceReattempt, setForceReattempt] = useState(false);
-  const [hasActivatedLocation, setHasActivatedLocation] = useState(false);
+  const [locationCoords, setLocationCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Get current date/time in ISO format for the default value
   const currentDateTime = new Date().toISOString().slice(0, 16);
@@ -84,100 +82,72 @@ const CheckInPage = () => {
     }
   }, [selectedPlace, form]);
 
-  // Fetch nearby places when use location is toggled on and we have coordinates
-  useEffect(() => {
-    const fetchPlaces = async () => {
-      if (useLocation && !geolocation.loading && !geolocation.error && geolocation.latitude && geolocation.longitude) {
-        setIsLoadingPlaces(true);
-        try {
-          console.log("Fetching places at coordinates:", geolocation.latitude, geolocation.longitude);
-          const places = await getNearbyPlaces(geolocation.latitude, geolocation.longitude);
-          console.log("Fetched places:", places);
-          setNearbyPlaces(places);
-          
-          // If we successfully got places, switch to the nearby tab
-          if (places.length > 0) {
-            setActiveTab("nearby");
-          } else {
-            toast({
-              title: "No places found nearby",
-              description: "Try expanding your search area or manually enter venue details.",
-              variant: "destructive",
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching places:", error);
-          toast({
-            title: "Error fetching nearby places",
-            description: "There was a problem finding venues near you. Please try again or enter venue details manually.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoadingPlaces(false);
-        }
-      }
-    };
-
-    fetchPlaces();
-  }, [useLocation, geolocation.latitude, geolocation.longitude, geolocation.loading, geolocation.error, toast, forceReattempt]);
-
-  // Check permission state and handle Safari-specific issues
-  useEffect(() => {
-    // Safari on iOS sometimes reports incorrect permission state
-    // If we have actual coordinates, treat permission as granted regardless of reported state
-    if (geolocation.latitude !== 0 && geolocation.longitude !== 0 && !geolocation.loading) {
-      setShowPermissionPrompt(false);
-      
-      if (useLocation && !isLoadingPlaces && nearbyPlaces.length === 0) {
-        // We have location but no places yet, trigger a fetch
-        const fetchPlaces = async () => {
-          setIsLoadingPlaces(true);
-          try {
-            const places = await getNearbyPlaces(geolocation.latitude, geolocation.longitude);
-            setNearbyPlaces(places);
-            
-            if (places.length > 0) {
-              setActiveTab("nearby");
-            }
-          } catch (error) {
-            console.error("Error fetching places:", error);
-          } finally {
-            setIsLoadingPlaces(false);
-          }
-        };
-        fetchPlaces();
-      }
-    } else if (geolocation.permissionState === 'denied' && useLocation) {
-      setShowPermissionPrompt(true);
-    } else if (geolocation.error && useLocation) {
-      setShowPermissionPrompt(true);
-    } else {
-      setShowPermissionPrompt(false);
+  // Handle when location is found
+  const handleLocationFound = async (latitude: number, longitude: number) => {
+    setLocationCoords({lat: latitude, lng: longitude});
+    setLocationError(null);
+    
+    if (useLocation) {
+      fetchNearbyPlaces(latitude, longitude);
     }
-  }, [geolocation, useLocation, isLoadingPlaces, nearbyPlaces]);
-
-  // Update location toggle handler with improved Safari support
-  const handleToggleLocation = async () => {
-    setHasActivatedLocation(true);
-    
-    // Always try to get location regardless of reported permission state
-    // This works better with Safari which sometimes misreports permission state
-    setUseLocation(true);
-    await geolocation.requestPermission();
-    
-    // Artificial delay to let the browser handle the permission prompt
-    setTimeout(async () => {
-      await geolocation.requestPermission();
-      // Force a re-fetch of places with a new value
-      setForceReattempt(prev => !prev);
-    }, 500);
   };
 
-  // Force a retry of location detection
-  const handleRetryLocation = async () => {
-    setUseLocation(true);
-    await geolocation.requestPermission();
-    setForceReattempt(prev => !prev);
+  // Handle location errors
+  const handleLocationError = (error: string) => {
+    setLocationError(error);
+    console.error("Location error:", error);
+  };
+
+  // Handle location loading state changes
+  const handleLoadingChange = (isLoading: boolean) => {
+    setIsLoadingPlaces(isLoading);
+  };
+
+  // Fetch nearby places function
+  const fetchNearbyPlaces = async (latitude: number, longitude: number) => {
+    if (!latitude || !longitude) return;
+    
+    setIsLoadingPlaces(true);
+    try {
+      console.log("Fetching places at coordinates:", latitude, longitude);
+      const places = await getNearbyPlaces(latitude, longitude);
+      console.log("Fetched places:", places);
+      setNearbyPlaces(places);
+      
+      // If we successfully got places, switch to the nearby tab
+      if (places.length > 0) {
+        setActiveTab("nearby");
+        toast({
+          title: "Places found!",
+          description: `Found ${places.length} places near you.`,
+        });
+      } else {
+        toast({
+          title: "No places found nearby",
+          description: "Try expanding your search area or manually enter venue details.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching places:", error);
+      toast({
+        title: "Error fetching nearby places",
+        description: "There was a problem finding venues near you. Please try again or enter venue details manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingPlaces(false);
+    }
+  };
+
+  // Toggle location usage and fetch places
+  const handleToggleLocation = () => {
+    setUseLocation(prev => !prev);
+    
+    // If turning location on and we already have coordinates, fetch places
+    if (!useLocation && locationCoords) {
+      fetchNearbyPlaces(locationCoords.lat, locationCoords.lng);
+    }
   };
 
   // Select a place from the nearby places list
@@ -185,20 +155,14 @@ const CheckInPage = () => {
     setSelectedPlace(place);
   };
 
-  // Auto-trigger location permission prompt on component mount for iPad users
-  useEffect(() => {
-    // Only auto-trigger for iPad/Safari users and only once
-    if (!hasActivatedLocation && 
-        (navigator.userAgent.includes("iPad") || 
-         (navigator.userAgent.includes("Safari") && !navigator.userAgent.includes("Chrome")))) {
-      // Small delay to let the UI render first
-      const timer = setTimeout(() => {
-        handleToggleLocation();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
+  // Force a retry of location and place fetching
+  const handleRetryFetchPlaces = async () => {
+    if (locationCoords) {
+      fetchNearbyPlaces(locationCoords.lat, locationCoords.lng);
+    } else {
+      setUseLocation(true);
     }
-  }, [hasActivatedLocation]);
+  };
 
   // Mutation for check-in submission
   const checkInMutation = useMutation({
@@ -384,7 +348,7 @@ const CheckInPage = () => {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Finding places nearby...
                 </>
-              ) : useLocation && geolocation.latitude !== 0 ? (
+              ) : useLocation ? (
                 <>
                   <LocateFixed className="mr-2 h-4 w-4" />
                   Using your location • Tap to refresh
@@ -397,93 +361,14 @@ const CheckInPage = () => {
               )}
             </Button>
 
-            {/* Location Status & Debug Info */}
-            {useLocation && !isLoadingPlaces && (
+            {/* Location Detector Component */}
+            {useLocation && (
               <div className="mt-2">
-                {geolocation.error ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="text-sm text-destructive flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>Error: Location unavailable</span>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="mt-1"
-                      onClick={handleRetryLocation}
-                    >
-                      <LocateFixed className="mr-2 h-3 w-3" />
-                      Retry Getting Location
-                    </Button>
-                  </div>
-                ) : geolocation.latitude !== 0 ? (
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>Location found{' '}
-                      {nearbyPlaces.length > 0 && `(${nearbyPlaces.length} places nearby)`}
-                    </span>
-                  </div>
-                ) : geolocation.loading ? (
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span>Getting your location...</span>
-                  </div>
-                ) : null}
-              </div>
-            )}
-
-            {/* Enhanced Permission Status Display for Safari */}
-            {showPermissionPrompt && (
-              <Alert 
-                className="mt-2 animate-in fade-in-50"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Location Access Required</AlertTitle>
-                <AlertDescription className="text-xs">
-                  {navigator.userAgent.includes("Safari") || navigator.userAgent.includes("iPad") ? (
-                    <>
-                      <p>For iPad/Safari users:</p>
-                      <ol className="list-decimal ml-5 mt-1 space-y-1">
-                        <li>Tap "AA" in your address bar</li>
-                        <li>Tap "Website Settings"</li>
-                        <li>Ensure "Location" is set to "Allow"</li>
-                        <li>Close settings and tap "Try Again" below</li>
-                      </ol>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="mt-2"
-                        onClick={handleRetryLocation}
-                      >
-                        <LocateFixed className="mr-2 h-3 w-3" />
-                        Try Again
-                      </Button>
-                    </>
-                  ) : (
-                    <p>Please enable location services in your browser settings and reload the page.</p>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {/* Only show loading/success states when not showing permission prompt */}
-            {!showPermissionPrompt && useLocation && (
-              <div className="mt-2">
-                {geolocation.loading ? (
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Getting your location...</span>
-                  </div>
-                ) : geolocation.error ? (
-                  <div className="text-sm text-destructive flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span>{geolocation.error}</span>
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Location found at {geolocation.latitude.toFixed(4)}, {geolocation.longitude.toFixed(4)}
-                  </div>
-                )}
+                <LocationDetector 
+                  onLocationFound={handleLocationFound}
+                  onLocationError={handleLocationError}
+                  onLoadingChange={handleLoadingChange}
+                />
               </div>
             )}
           </div>
@@ -497,7 +382,7 @@ const CheckInPage = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="nearby" 
-                disabled={isLoadingPlaces || (nearbyPlaces.length === 0 && useLocation && !geolocation.loading)}
+                disabled={isLoadingPlaces || (nearbyPlaces.length === 0 && useLocation && !isLoadingPlaces)}
               >
                 <MapPin className="h-4 w-4 mr-2" />
                 {nearbyPlaces.length > 0 
@@ -644,7 +529,7 @@ const CheckInPage = () => {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={handleRetryLocation}
+                          onClick={handleRetryFetchPlaces}
                         >
                           <LocateFixed className="mr-2 h-3 w-3" />
                           Retry
