@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { Loader2, MapPin } from "lucide-react";
 import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
+import { useToast } from "@/hooks/use-toast";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -24,18 +25,36 @@ export function PlaceDetails({
   onSubmit
 }: PlaceDetailsProps) {
   const [submitted, setSubmitted] = useState(false);
+  const { toast } = useToast();
+  
+  // Reset submitted state when isSubmitting changes to false
+  useEffect(() => {
+    if (!isSubmitting && submitted) {
+      console.log("Submission completed, resetting submitted state");
+      setSubmitted(false);
+    }
+  }, [isSubmitting, submitted]);
   
   const handleSubmit = (values: any) => {
-    if (submitted || isSubmitting) return; // Prevent double submissions
+    if (submitted || isSubmitting) {
+      console.log("Already submitted or submitting, ignoring click");
+      return; // Prevent double submissions
+    }
     
+    console.log("PlaceDetails: Handling form submission with values:", values);
     setSubmitted(true);
-    console.log("PlaceDetails: Submitting form with values:", values);
     
     try {
+      console.log("PlaceDetails: Calling onSubmit");
       onSubmit(values);
     } catch (error) {
       console.error("Error in check-in submission:", error);
       setSubmitted(false);
+      toast({
+        title: "Check-in Failed",
+        description: "There was a problem processing your check-in. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 

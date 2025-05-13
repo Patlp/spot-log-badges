@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, createCheckIn, VenueType, saveVenue } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { CheckInFormValues } from "@/components/check-in/ManualCheckInForm";
-import { Place } from "@/services/places";
+import { Place } from "@/components/check-in/PlacesList";
 import { useNavigate } from "react-router-dom";
 
 interface UseCheckInOptions {
@@ -52,7 +52,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
               longitude: selectedPlace.longitude,
             });
           } catch (venueError) {
-            console.error("Venue storage error:", venueError);
+            console.error("Venue storage error (non-critical):", venueError);
             // Continue with check-in even if venue storage fails
           }
         }

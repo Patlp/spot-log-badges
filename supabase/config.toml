@@ -4,3 +4,7 @@ project_id = "rtbicjimopzlqpodwjcm"
 [functions.get-nearby-places]
 verify_jwt = false
 
+[api]
+# Enable anonymous access to venues table
+# This is required for venue saving during check-ins
+enabled_anon_writes = ["venues"]

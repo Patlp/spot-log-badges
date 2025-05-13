@@ -10,7 +10,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true
-  }
+  },
+  global: {
+    // Added for debugging
+    fetch: (...args) => {
+      console.log("Supabase fetch:", args[0]);
+      return fetch(...args);
+    },
+  },
 });
 
 // Define the types for venue types
@@ -201,17 +208,13 @@ export const saveVenue = async (venueData: {
   try {
     console.log("Saving venue data:", venueData);
     
-    // Check if user is authenticated
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
-    
-    if (!user) {
-      console.warn("No authenticated user found when saving venue");
-    }
-    
+    // Allow anonymous insert even without user
     const { error } = await supabase
       .from("venues")
-      .upsert([venueData], { onConflict: 'place_id', ignoreDuplicates: false });
+      .upsert([venueData], { 
+        onConflict: 'place_id', 
+        ignoreDuplicates: true // Changed to true to ignore duplicates
+      });
       
     if (error) {
       console.error("Error saving venue:", error);
