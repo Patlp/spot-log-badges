@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createCheckIn, VenueType, saveVenue } from "@/lib/supabase";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { CheckInFormValues } from "@/components/check-in/ManualCheckInForm";
 import { Place } from "@/components/check-in/PlacesList";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,6 @@ interface UseCheckInOptions {
 export const useCheckIn = (options?: UseCheckInOptions) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   
@@ -93,11 +92,12 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       
-      // Show success toast
+      // Show success toast with fixed duration
       toast({
         title: "Check-in Successful!",
         description: "Your check-in has been recorded.",
         variant: "default",
+        duration: 5000, // Explicitly set duration
       });
       
       // Navigate to profile page
@@ -117,11 +117,12 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       // Set the error state
       setCheckInError(error.message || "Unknown error occurred");
       
-      // Show error toast with specific message
+      // Show error toast with specific message and duration
       toast({
         title: "Check-in Failed",
         description: `Error: ${error.message || "Unknown error occurred"}`,
         variant: "destructive",
+        duration: 7000, // Give more time to read error messages
       });
       
       // Ensure isSubmitting is reset
@@ -132,7 +133,6 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       console.log("Check-in mutation settled");
       setIsSubmitting(false);
     },
-    retry: 0, // Don't retry failed mutations - better to show error and let user try again
   });
 
   const handleCheckIn = (data: CheckInFormValues, userId: string, selectedPlace: Place | null) => {
@@ -143,6 +143,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         title: "Authentication Required",
         description: "You must be logged in to check in.",
         variant: "destructive",
+        duration: 5000,
       });
       return;
     }
@@ -153,6 +154,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         title: "Missing Information",
         description: "Please fill out all required fields.",
         variant: "destructive",
+        duration: 5000,
       });
       return;
     }

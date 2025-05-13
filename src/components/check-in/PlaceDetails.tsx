@@ -10,6 +10,7 @@ import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "@/hooks/use-toast";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -45,7 +46,11 @@ export function PlaceDetails({
         if (localSubmitting) {
           setLocalSubmitting(false);
           setSubmitError("Check-in timed out. The request may still be processing or failed silently. Please check your console logs.");
-          console.log("Mutation chain never resolved.");
+          toast({
+            title: "Check-in Timeout",
+            description: "Your check-in is taking longer than expected. It may still be processing in the background.",
+            variant: "warning",
+          });
         }
       }, 8000); // 8 second timeout
     }
@@ -73,6 +78,11 @@ export function PlaceDetails({
       console.error("Synchronous error in handleSubmit:", error);
       setSubmitError(error.message || "An unexpected error occurred");
       setLocalSubmitting(false);
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
   };
 
