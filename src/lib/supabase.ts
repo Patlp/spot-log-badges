@@ -1,4 +1,3 @@
-
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -168,7 +167,7 @@ export const createCheckIn = async (checkInData: {
       // Check if this is the user's first check-in at this venue
       const { data: prevCheckIns, error: checkInError } = await supabase
         .from("check_ins")
-        .select("id")
+        .select("*")
         .eq("user_id", checkInData.user_id)
         .eq("venue_name", checkInData.venue_name)
         .neq("id", checkIn.id) // Exclude the current check-in
@@ -204,17 +203,17 @@ export const createCheckIn = async (checkInData: {
           }
         } else {
           // Check if this is their 3rd+ check-in at this venue, award a "regular" badge
-          const { data: checkInCount, error: countError } = await supabase
+          const { count, error: countError } = await supabase
             .from("check_ins")
-            .select("id", { count: 'exact' })
+            .select("*", { count: 'exact', head: false })
             .eq("user_id", checkInData.user_id)
             .eq("venue_name", checkInData.venue_name);
             
-          if (!countError && checkInCount && checkInCount.length >= 3) {
+          if (!countError && count && count >= 3) {
             // Check if they already have a regular badge for this venue
             const { data: existingBadges, error: badgeQueryError } = await supabase
               .from("badges")
-              .select("id")
+              .select("*")
               .eq("user_id", checkInData.user_id)
               .eq("venue_name", checkInData.venue_name)
               .eq("badge_type", "regular")
