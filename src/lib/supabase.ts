@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from '@/integrations/supabase/types';
 
@@ -217,7 +218,8 @@ export const createCheckIn = async (checkInData: {
     console.log("Check-in data prepared:", testData);
     
     // Insert with proper error handling using the exact structure requested
-    const { data, error } = await supabase
+    // Using "as any" to bypass type checking as requested
+    const { data, error } = await (supabase as any)
       .from("check_ins")
       .insert([testData])
       .select();
