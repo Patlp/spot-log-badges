@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import type {
   ToastActionElement,
@@ -33,7 +34,7 @@ type ActionType = typeof actionTypes
 type Action =
   | {
       type: ActionType["ADD_TOAST"]
-      toast: Omit<ToasterToast, "id">
+      toast: Omit<ToasterToast, "id"> & { id?: string }
     }
   | {
       type: ActionType["UPDATE_TOAST"]
@@ -122,7 +123,8 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
+// Define a more permissive type for the props that allows id
+type ToastProps = Omit<ToasterToast, "id"> & { id?: string }
 
 // Define the return type of the toast function explicitly
 interface ToastReturn {
@@ -131,8 +133,8 @@ interface ToastReturn {
   update: (props: ToasterToast) => void;
 }
 
-function toast(props: Toast): ToastReturn {
-  const id = genId()
+function toast(props: ToastProps): ToastReturn {
+  const id = props.id || genId();
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -145,7 +147,6 @@ function toast(props: Toast): ToastReturn {
     type: actionTypes.ADD_TOAST,
     toast: {
       ...props,
-      id,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
