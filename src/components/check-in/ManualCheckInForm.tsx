@@ -1,25 +1,20 @@
 
-import { VenueType } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
+import { z } from "zod";
+import { UseFormReturn } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
 import { Loader2, MapPin } from "lucide-react";
-import { UseFormReturn } from "react-hook-form";
-import { z } from "zod";
-import { useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../App";
-import { toast } from "@/hooks/use-toast";
-import { useCheckInEngine } from "@/lib/checkinEngine";
+import { MoodCheckIn } from "./MoodCheckIn";
 
-// Define the form validation schema using zod
+// Define the form schema using zod
 export const checkInSchema = z.object({
-  venue_name: z.string().min(2, { message: "Venue name must be at least 2 characters" }),
-  venue_type: z.enum(["Bar", "Restaurant", "Club", "Event", "Other"]),
-  location: z.string().min(2, { message: "Location must be at least 2 characters" }),
-  check_in_time: z.string(),
+  venue_name: z.string().min(2, "Venue name is required"),
+  venue_type: z.string().min(1, "Venue type is required"),
+  location: z.string().min(2, "Location is required"),
+  check_in_time: z.string().min(1, "Date and time are required"),
   notes: z.string().optional(),
 });
 
@@ -31,107 +26,13 @@ interface ManualCheckInFormProps {
   onSubmit: (data: CheckInFormValues) => void;
 }
 
-export function ManualCheckInForm({ 
-  form, 
-  isSubmitting: parentIsSubmitting, 
-  onSubmit: parentOnSubmit
-}: ManualCheckInFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
-  
-  // Use check-in engine
-  const { checkIn } = useCheckInEngine({ 
-    debugMode: true,
-    enableRedirect: false,
-    enableToasts: true
-  });
-
-  const handleManualCheckIn = async (values: CheckInFormValues) => {
-    // Prevent check-in if already submitting
-    if (isSubmitting || parentIsSubmitting) {
-      return;
-    }
-
-    console.log("[ManualCheckInForm] Starting check-in with values:", values);
-    
-    try {
-      // Validate user is logged in
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "You must be logged in to check in",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Set loading state
-      setIsSubmitting(true);
-      
-      // Prepare check-in data
-      const checkInData = {
-        user_id: user.id,
-        venue_name: values.venue_name,
-        venue_type: values.venue_type,
-        location: values.location,
-        check_in_time: values.check_in_time,
-        notes: values.notes
-      };
-      
-      // Show initial toast
-      toast({
-        title: "Checking in...",
-        description: `Processing check-in at ${values.venue_name}`,
-        variant: "default"
-      });
-      
-      // Execute check-in
-      const result = await checkIn(checkInData);
-      
-      console.log("[ManualCheckInForm] Check-in result:", result);
-      
-      if (result.success) {
-        // Show success toast
-        toast({
-          title: "Check-in Complete!",
-          description: `Successfully checked in at ${values.venue_name}`,
-          variant: "default"
-        });
-        
-        // If badge was awarded, show badge toast
-        if (result.badgeAwarded) {
-          toast({
-            title: "Badge Earned!",
-            description: "You earned a First Visit badge!",
-            variant: "default"
-          });
-        }
-        
-        // Use a short timeout to ensure toasts are visible, then redirect
-        setTimeout(() => {
-          navigate("/profile");
-        }, 1000);
-      }
-    } catch (error) {
-      console.error("[ManualCheckInForm] Error during check-in:", error);
-      toast({
-        title: "Check-in Failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const isButtonSubmitting = isSubmitting || parentIsSubmitting;
-  
-  console.log("[ManualCheckInForm] Render with isSubmitting:", isButtonSubmitting);
+export function ManualCheckInForm({ form, isSubmitting, onSubmit }: ManualCheckInFormProps) {
+  // Get the current value of venue_name for use in MoodCheckIn
+  const venueName = form.watch("venue_name");
   
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleManualCheckIn)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         {/* Venue Name */}
         <FormField
           control={form.control}
@@ -140,7 +41,10 @@ export function ManualCheckInForm({
             <FormItem>
               <FormLabel>Venue Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Cloudtop Bar" {...field} />
+                <Input 
+                  placeholder="Enter the name of the venue" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -154,21 +58,21 @@ export function ManualCheckInForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Venue Type</FormLabel>
-              <Select
-                onValueChange={field.onChange}
+              <Select 
+                onValueChange={field.onChange} 
                 defaultValue={field.value}
-                value={field.value}
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select venue type" />
+                    <SelectValue placeholder="Select a venue type" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Restaurant">Restaurant</SelectItem>
                   <SelectItem value="Bar">Bar</SelectItem>
                   <SelectItem value="Club">Club</SelectItem>
-                  <SelectItem value="Event">Event</SelectItem>
+                  <SelectItem value="Cafe">Cafe</SelectItem>
+                  <SelectItem value="Park">Park</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
@@ -185,7 +89,10 @@ export function ManualCheckInForm({
             <FormItem>
               <FormLabel>Location</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. New York, NY" {...field} />
+                <Input 
+                  placeholder="Address or general area" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -225,12 +132,13 @@ export function ManualCheckInForm({
           )}
         />
 
+        {/* Submit Button */}
         <Button
           type="submit"
-          disabled={isButtonSubmitting}
+          disabled={isSubmitting}
           className="w-full"
         >
-          {isButtonSubmitting ? (
+          {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Checking In...
@@ -242,6 +150,13 @@ export function ManualCheckInForm({
             </>
           )}
         </Button>
+        
+        {/* Add the MoodCheckIn component if a venue name is provided */}
+        {venueName && venueName.length > 0 && (
+          <div className="border-t pt-4 mt-4">
+            <MoodCheckIn venueName={venueName} />
+          </div>
+        )}
       </form>
     </Form>
   );

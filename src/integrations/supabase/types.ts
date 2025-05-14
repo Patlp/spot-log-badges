@@ -72,6 +72,30 @@ export type Database = {
         }
         Relationships: []
       }
+      mood_check_ins: {
+        Row: {
+          created_at: string
+          id: string
+          mood: string
+          user_id: string
+          venue_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mood: string
+          user_id: string
+          venue_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mood?: string
+          user_id?: string
+          venue_name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -1,60 +1,49 @@
 
-// DO NOT MODIFY THIS FILE — This component is part of the working check-in system. 
-// Any changes may break the Nearby, Manual, or Test check-in workflows.
-
-import { useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
-
-// Import the new components
+import { MoodCheckIn } from "./MoodCheckIn";
+import { CheckInFormValues } from "./ManualCheckInForm";
+import { Place } from "./PlacesList";
+import { mapGoogleTypeToVenueType } from "@/services/places";
+import { useCheckInSubmission } from "./place-details/useCheckInSubmission";
 import { DiagnosticAlerts } from "./place-details/DiagnosticAlerts";
 import { PlaceHeader } from "./place-details/PlaceHeader";
 import { CheckInButton } from "./place-details/CheckInButton";
-import { useCheckInSubmission } from "./place-details/useCheckInSubmission";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
-  form: UseFormReturn<any>;
+  form: UseFormReturn<CheckInFormValues>;
   isSubmitting: boolean;
   onSubmit: (values: any) => void;
 }
 
-export function PlaceDetails({ 
-  selectedPlace, 
-  form, 
-  isSubmitting: parentIsSubmitting,
-  onSubmit: parentOnSubmit
-}: PlaceDetailsProps) {
-  const {
-    submitError,
-    diagnosticInfo,
-    engineIsSubmitting,
-    handleSubmit
-  } = useCheckInSubmission(selectedPlace);
-
-  // For logging purposes, show when component renders with what state
-  useEffect(() => {
-    console.log("[PlaceDetails] Render with states:", { 
-      parentIsSubmitting, 
-      engineIsSubmitting, 
-      selectedPlace: selectedPlace.name
-    });
-  }, [parentIsSubmitting, engineIsSubmitting, selectedPlace]);
-
-  const isFormSubmitting = parentIsSubmitting || engineIsSubmitting;
+export function PlaceDetails({ selectedPlace, form, isSubmitting, onSubmit }: PlaceDetailsProps) {
+  const { 
+    submitError, 
+    diagnosticInfo, 
+    handleSubmit 
+  } = useCheckInSubmission({ 
+    selectedPlace, 
+    form, 
+    onSubmit 
+  });
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 border-t pt-4 mt-4">
-        <DiagnosticAlerts 
-          submitError={submitError} 
-          diagnosticInfo={diagnosticInfo} 
+        <DiagnosticAlerts
+          submitError={submitError}
+          diagnosticInfo={diagnosticInfo}
         />
 
-        <PlaceHeader selectedPlace={selectedPlace} />
+        <PlaceHeader 
+          name={selectedPlace.name} 
+          address={selectedPlace.address} 
+          venueType={mapGoogleTypeToVenueType(selectedPlace.types)} 
+        />
 
         {/* Date/Time */}
         <FormField
@@ -90,9 +79,14 @@ export function PlaceDetails({
         />
 
         <CheckInButton 
-          isFormSubmitting={isFormSubmitting} 
-          selectedPlace={selectedPlace} 
+          isSubmitting={isSubmitting} 
+          venueName={selectedPlace.name} 
         />
+        
+        {/* Add the MoodCheckIn component */}
+        <div className="border-t pt-4 mt-4">
+          <MoodCheckIn venueName={selectedPlace.name} />
+        </div>
       </form>
     </Form>
   );
