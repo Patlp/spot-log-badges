@@ -11,6 +11,7 @@ import { mapGoogleTypeToVenueType } from "@/services/places";
 import { DiagnosticAlerts } from "./place-details/DiagnosticAlerts";
 import { PlaceHeader } from "./place-details/PlaceHeader";
 import { CheckInButton } from "./place-details/CheckInButton";
+import { useCheckInSubmission } from "./place-details/useCheckInSubmission";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;

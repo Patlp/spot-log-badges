@@ -1,12 +1,11 @@
 
-// DO NOT MODIFY THIS FILE — This component is part of the working check-in system. 
-// Any changes may break the Nearby, Manual, or Test check-in workflows.
+// This component is part of the check-in system
+// It handles submission of check-in data and provides diagnostic information
 
 import { useState, useContext } from "react";
 import { useCheckInEngine } from "@/lib/checkinEngine";
 import { AuthContext } from "../../../App";
 import { toast } from "@/hooks/use-toast";
-import { mapGoogleTypeToVenueType } from "@/services/places";
 import { Place } from "../PlacesList";
 import { UseFormReturn } from "react-hook-form";
 import { CheckInFormValues } from "../ManualCheckInForm";
