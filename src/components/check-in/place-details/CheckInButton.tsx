@@ -14,21 +14,12 @@ interface CheckInButtonProps {
 export function CheckInButton({ isFormSubmitting, selectedPlace }: CheckInButtonProps) {
   return (
     <Button
-      type="submit"
-      disabled={isFormSubmitting}
+      type="button" // Changed from submit to button to prevent form submission
+      disabled={true} // Always disabled to prevent check-ins
       className="w-full"
     >
-      {isFormSubmitting ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Checking In at {selectedPlace.name}...
-        </>
-      ) : (
-        <>
-          <MapPin className="mr-2 h-4 w-4" />
-          Check In at {selectedPlace.name}
-        </>
-      )}
+      <MapPin className="mr-2 h-4 w-4" />
+      Check In Disabled
     </Button>
   );
 }
