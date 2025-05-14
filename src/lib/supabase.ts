@@ -43,14 +43,51 @@ export type VenueType = "Restaurant" | "Bar" | "Club" | "Event" | "Other";
 // Function to get user profile
 export const getProfile = async (userId: string) => {
   try {
-    const { data, error } = await supabase
+    // Get the basic profile data
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single();
 
-    if (error) throw error;
-    return data;
+    if (profileError) throw profileError;
+    
+    // Get the total number of check-ins for this user
+    const { count: totalCheckIns, error: checkInsError } = await supabase
+      .from("check_ins")
+      .select("*", { count: 'exact', head: true })
+      .eq("user_id", userId);
+      
+    if (checkInsError) throw checkInsError;
+    
+    // Get the number of unique venues the user has checked into
+    const { data: uniqueVenues, error: uniqueVenuesError } = await supabase
+      .from("check_ins")
+      .select("venue_name")
+      .eq("user_id", userId)
+      .limit(1000); // Reasonable limit to prevent performance issues
+      
+    if (uniqueVenuesError) throw uniqueVenuesError;
+    
+    // Count unique venue names using a Set
+    const uniqueVenueSet = new Set(uniqueVenues.map(checkIn => checkIn.venue_name));
+    const uniqueVenueCount = uniqueVenueSet.size;
+    
+    // Count badges (for now we'll keep this as is, but enhance the data)
+    const { count: badgesCount, error: badgesError } = await supabase
+      .from("badges")
+      .select("*", { count: 'exact', head: true })
+      .eq("user_id", userId);
+      
+    if (badgesError) throw badgesError;
+    
+    // Return the enhanced profile with real-time counts
+    return {
+      ...profileData,
+      total_check_ins: totalCheckIns || 0,
+      unique_venues: uniqueVenueCount || 0,
+      total_badges: badgesCount || 0
+    };
   } catch (error) {
     console.error("Error getting profile:", error);
     throw error;
