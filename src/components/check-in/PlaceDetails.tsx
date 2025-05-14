@@ -101,17 +101,12 @@ export function PlaceDetails({
           variant: "default"
         });
         
+        // DO NOT MODIFY — final working redirect logic for nearby check-ins
         // Use a short timeout before navigating to ensure toast is visible
         setTimeout(() => {
-          console.log("[PlaceDetails] Navigating to profile after successful check-in");
-          
-          // Use regular navigation, but if that fails, we'll fallback to direct location change
-          try {
-            navigate("/profile");
-          } catch (navError) {
-            console.error("[PlaceDetails] Navigation error, using fallback:", navError);
-            window.location.href = "/profile";
-          }
+          console.log("[PlaceDetails] Forcing page redirect after successful check-in");
+          // Force a full page reload/redirect that bypasses React Router
+          window.location.assign("/profile");
         }, 500);
       } else {
         setSubmitError(result.error?.message || "Check-in failed");
@@ -122,6 +117,11 @@ export function PlaceDetails({
       console.error("[PlaceDetails] Error during submit:", error);
       setSubmitError(error.message || "An unexpected error occurred");
       showDiagnostic(`Exception: ${error.message}`);
+    } finally {
+      // Make sure we always reset the submitting state
+      console.log("[PlaceDetails] Resetting submitting state in finally block");
+      // We don't call setIsFormSubmitting(false) here because the page will reload
+      // and resetting the state before navigation could cause UI flicker
     }
   };
 
