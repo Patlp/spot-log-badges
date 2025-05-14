@@ -53,18 +53,6 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
         // DEBUGGING STEP 1: Log the full payload being sent
         console.log("[useCheckIn] FULL PAYLOAD BEING SENT:", JSON.stringify(checkInData, null, 2));
         
-        // DEBUGGING STEP 2: Test with hardcoded payload
-        // Uncomment this to test with hardcoded data
-        // const hardcodedData = {
-        //   user_id: userId, // Keep the real user ID
-        //   venue_name: "Test Place",
-        //   venue_type: "Restaurant", 
-        //   location: "Test Location",
-        //   check_in_time: new Date().toISOString(),
-        //   notes: "Test note"
-        // };
-        // console.log("[useCheckIn] Using HARDCODED test data:", hardcodedData);
-        
         // Create the check-in with explicit try/catch
         try {
           console.log("[useCheckIn] Check-in started", { checkInData });
@@ -88,21 +76,21 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           
           console.log("[useCheckIn] Check-in completed successfully:", resultData);
           return resultData[0];
-        } catch (e: any) { // Fixed: explicitly typing the error as any
-          console.error("[useCheckIn] Check-in insert error:", e);
+        } catch (err: any) { // Explicitly type as any
+          console.error("[useCheckIn] Check-in insert error:", err);
           console.error("[useCheckIn] Error details:", {
-            message: e.message,
-            code: e.code,
-            details: e.details,
-            hint: e.hint,
-            stack: e.stack
+            message: err.message,
+            code: err.code,
+            details: err.details,
+            hint: err.hint,
+            stack: err.stack
           });
           
           // Alert for immediate feedback during debugging
-          alert("Check-in failed: " + (e.message || "Unknown error"));
-          throw e;
+          alert("Check-in failed: " + (err.message || "Unknown error"));
+          throw err;
         }
-      } catch (error: any) { // Fixed: explicitly typing the error as any
+      } catch (error: any) { // Explicitly type as any
         console.error("[useCheckIn] Check-in process error:", error);
         // Alert for immediate feedback during debugging
         alert("Check-in failed: " + (error.message || "Unknown error"));
@@ -133,7 +121,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       console.log("[useCheckIn] Success - navigation disabled for testing");
       // navigate("/profile");
     },
-    onError: (error: any) => { // Fixed: explicitly typing the error as any
+    onError: (error: any) => { // Explicitly type as any
       console.log("[useCheckIn] Mutation failed:", error);
       
       // Reset submission state immediately on error
@@ -176,7 +164,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
       // Call the mutation with explicit error handling
       console.log("[useCheckIn] Triggering check-in mutation...");
       checkInMutation.mutate({ data, userId, selectedPlace });
-    } catch (error: any) { // Fixed: explicitly typing the error as any
+    } catch (error: any) { // Explicitly type as any
       // Catch any synchronous errors (should be rare with async mutation)
       console.error("[useCheckIn] Unexpected error during mutation trigger:", error);
       setIsSubmitting(false);
