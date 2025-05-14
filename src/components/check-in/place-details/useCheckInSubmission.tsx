@@ -39,17 +39,14 @@ export function useCheckInSubmission({ selectedPlace, form, onSubmit }: UseCheck
   };
 
   const handleSubmit = async (values: any) => {
-    // This function is now mostly for completeness - the main check-in flow
-    // happens in the CheckInButton component, but we'll leave this here
-    // to ensure backward compatibility with other parts of the app
+    // This function is now mostly for completeness since we're focusing on mood check-ins
+    // But we'll maintain it for compatibility with the existing form structure
     
     // Clear previous errors and show diagnostic
     setSubmitError(null);
-    showDiagnostic("Form submission captured - check-in will be handled by button");
+    showDiagnostic("Form submission intercepted - using mood check-in instead");
     
-    console.log("[PlaceDetails] Form submission values:", values);
-    
-    // We won't execute any check-in here since the button now handles it
+    // Simply prevent default form submission, as mood check-in is handled separately
     return false;
   };
 

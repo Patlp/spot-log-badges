@@ -3,7 +3,7 @@ import { useState, useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthContext } from "../../App";
 import { supabase } from "@/integrations/supabase/client";
-import { Smile, Laugh, Meh, Frown, Angry } from "lucide-react";
+import { Smile, Meh, Frown, Brain } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface MoodCheckInProps {
@@ -23,10 +23,9 @@ export function MoodCheckIn({ venueName }: MoodCheckInProps) {
   // Define mood options with emojis
   const moodOptions: MoodOption[] = [
     { label: "Happy", icon: <Smile className="h-6 w-6" />, value: "happy" },
-    { label: "Excited", icon: <Laugh className="h-6 w-6" />, value: "excited" },
     { label: "Chill", icon: <Meh className="h-6 w-6" />, value: "chill" },
+    { label: "Focused", icon: <Brain className="h-6 w-6" />, value: "focused" },
     { label: "Tired", icon: <Frown className="h-6 w-6" />, value: "tired" },
-    { label: "Stressed", icon: <Angry className="h-6 w-6" />, value: "stressed" },
   ];
 
   const handleMoodSubmit = async (mood: string) => {
@@ -61,8 +60,8 @@ export function MoodCheckIn({ venueName }: MoodCheckInProps) {
 
       // Show success toast
       toast({
-        title: "Mood Saved!",
-        description: "Thanks for checking in your mood.",
+        title: "Mood saved!",
+        description: "Thanks for checking in.",
         variant: "default",
       });
     } catch (error) {
@@ -78,7 +77,7 @@ export function MoodCheckIn({ venueName }: MoodCheckInProps) {
   };
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="space-y-4">
       <h3 className="text-lg font-medium">How are you feeling here?</h3>
       
       <div className="flex flex-wrap gap-2">

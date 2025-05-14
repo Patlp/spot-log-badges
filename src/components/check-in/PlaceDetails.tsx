@@ -10,7 +10,6 @@ import { Place } from "./PlacesList";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 import { DiagnosticAlerts } from "./place-details/DiagnosticAlerts";
 import { PlaceHeader } from "./place-details/PlaceHeader";
-import { CheckInButton } from "./place-details/CheckInButton";
 import { useCheckInSubmission } from "./place-details/useCheckInSubmission";
 
 interface PlaceDetailsProps {
@@ -43,48 +42,45 @@ export function PlaceDetails({ selectedPlace, form, isSubmitting, onSubmit }: Pl
           selectedPlace={selectedPlace}
         />
 
-        {/* Date/Time */}
-        <FormField
-          control={form.control}
-          name="check_in_time"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Date & Time</FormLabel>
-              <FormControl>
-                <Input type="datetime-local" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Notes */}
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notes (optional)</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="How was it? Add any thoughts or vibes here..."
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <CheckInButton 
-          isFormSubmitting={isSubmitting} 
-          selectedPlace={selectedPlace} 
-        />
-        
-        {/* Add the MoodCheckIn component */}
-        <div className="border-t pt-4 mt-4">
-          <MoodCheckIn venueName={selectedPlace.name} />
+        {/* Date/Time hidden but kept for compatibility */}
+        <div className="hidden">
+          <FormField
+            control={form.control}
+            name="check_in_time"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date & Time</FormLabel>
+                <FormControl>
+                  <Input type="datetime-local" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
+
+        {/* Notes hidden but kept for compatibility */}
+        <div className="hidden">
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes (optional)</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="How was it? Add any thoughts or vibes here..."
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* MoodCheckIn is now the primary interaction */}
+        <MoodCheckIn venueName={selectedPlace.name} />
       </form>
     </Form>
   );
