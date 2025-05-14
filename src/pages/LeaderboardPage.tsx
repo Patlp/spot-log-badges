@@ -29,6 +29,12 @@ const LeaderboardPage = () => {
     return () => window.removeEventListener('focus', onFocus);
   }, [refetchLeaderboard]);
 
+  // Refresh leaderboard on initial mount
+  useEffect(() => {
+    // Immediate refresh on mount
+    refetchLeaderboard();
+  }, [refetchLeaderboard]);
+
   const getInitials = (username?: string) => {
     if (!username) return "U";
     return username
