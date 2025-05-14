@@ -1,6 +1,6 @@
 
-import { useContext, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useContext, useState, useEffect } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import { AuthContext } from "../App";
 import { useQuery } from "@tanstack/react-query";
 import { getProfile, getCheckIns, getUserBadges } from "../lib/supabase";
@@ -20,6 +20,13 @@ const ProfilePage = () => {
   const userId = id || user?.id || '';
   const isOwnProfile = userId === user?.id;
   const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const location = useLocation();
+
+  // Force refetch when profile page is navigated to
+  useEffect(() => {
+    // Increment refetch trigger when location changes (page navigated to)
+    setRefetchTrigger(prev => prev + 1);
+  }, [location.pathname]);
 
   // Badge icons mapping
   const badgeIcons: Record<string, any> = {
