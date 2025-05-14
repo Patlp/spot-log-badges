@@ -1,5 +1,4 @@
-
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../App";
 import { useQuery } from "@tanstack/react-query";
@@ -12,28 +11,40 @@ import { Trophy, MapPin, Award } from "lucide-react";
 
 const LeaderboardPage = () => {
   const { user } = useContext(AuthContext);
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
 
-  // Use the new getAccurateLeaderboard function for consistent data
+  // Use the getAccurateLeaderboard function with a timestamp-based key for forced refreshes
   const { data: leaderboard, isLoading, refetch: refetchLeaderboard } = useQuery({
-    queryKey: ["accurate-leaderboard"],
+    queryKey: ["accurate-leaderboard", lastRefreshTime],
     queryFn: getAccurateLeaderboard,
+    staleTime: 0, // Consider data always stale to ensure fresh fetches
+    refetchOnWindowFocus: true, // Always refetch when window gets focus
   });
 
-  // Refresh leaderboard when focused to ensure we have the latest avatar updates
+  // Enhanced refresh on window focus with timestamp update to force new data
   useEffect(() => {
     const onFocus = () => {
-      refetchLeaderboard();
+      setLastRefreshTime(Date.now()); // Update timestamp to force refetch
     };
     
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [refetchLeaderboard]);
+  }, []);
 
-  // Refresh leaderboard on initial mount
+  // Immediate refresh on mount with timestamp update
   useEffect(() => {
-    // Immediate refresh on mount
+    // Force an immediate refresh on component mount
     refetchLeaderboard();
   }, [refetchLeaderboard]);
+
+  // Poll for updates every 30 seconds to keep data fresh
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setLastRefreshTime(Date.now()); // Update timestamp to force refetch
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(intervalId);
+  }, []);
 
   const getInitials = (username?: string) => {
     if (!username) return "U";
