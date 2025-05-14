@@ -8,8 +8,16 @@ import { AuthContext } from "../../../App";
 import { toast } from "@/hooks/use-toast";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 import { Place } from "../PlacesList";
+import { UseFormReturn } from "react-hook-form";
+import { CheckInFormValues } from "../ManualCheckInForm";
 
-export function useCheckInSubmission(selectedPlace: Place) {
+interface UseCheckInSubmissionProps {
+  selectedPlace: Place;
+  form: UseFormReturn<CheckInFormValues>;
+  onSubmit: (values: any) => void;
+}
+
+export function useCheckInSubmission({ selectedPlace, form, onSubmit }: UseCheckInSubmissionProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [diagnosticInfo, setDiagnosticInfo] = useState<string | null>(null);
   const { user } = useContext(AuthContext);

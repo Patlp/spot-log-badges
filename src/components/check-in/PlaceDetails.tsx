@@ -8,7 +8,6 @@ import { MoodCheckIn } from "./MoodCheckIn";
 import { CheckInFormValues } from "./ManualCheckInForm";
 import { Place } from "./PlacesList";
 import { mapGoogleTypeToVenueType } from "@/services/places";
-import { useCheckInSubmission } from "./place-details/useCheckInSubmission";
 import { DiagnosticAlerts } from "./place-details/DiagnosticAlerts";
 import { PlaceHeader } from "./place-details/PlaceHeader";
 import { CheckInButton } from "./place-details/CheckInButton";
@@ -40,9 +39,7 @@ export function PlaceDetails({ selectedPlace, form, isSubmitting, onSubmit }: Pl
         />
 
         <PlaceHeader 
-          name={selectedPlace.name} 
-          address={selectedPlace.address} 
-          venueType={mapGoogleTypeToVenueType(selectedPlace.types)} 
+          selectedPlace={selectedPlace}
         />
 
         {/* Date/Time */}
@@ -79,8 +76,8 @@ export function PlaceDetails({ selectedPlace, form, isSubmitting, onSubmit }: Pl
         />
 
         <CheckInButton 
-          isSubmitting={isSubmitting} 
-          venueName={selectedPlace.name} 
+          isFormSubmitting={isSubmitting} 
+          selectedPlace={selectedPlace} 
         />
         
         {/* Add the MoodCheckIn component */}
