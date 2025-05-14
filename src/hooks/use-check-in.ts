@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { CheckInFormValues } from "@/components/check-in/ManualCheckInForm";
 import { Place } from "@/components/check-in/PlacesList";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client"; // Added this import for the direct Supabase client
+import { supabase } from "@/integrations/supabase/client";
 
 interface UseCheckInOptions {
   onSuccess?: () => void;
