@@ -1,4 +1,3 @@
-
 import { useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -76,12 +75,17 @@ const CheckInPage = () => {
     // Use actual user ID if available, otherwise use a test ID
     const testUserId = user?.id || "test-user-id";
     
+    setIsFormSubmitting(true);
+    
     checkIn({ 
       venue_name: "Test Place",
       venue_type: "Restaurant", 
       location: "Test Location",
       check_in_time: new Date().toISOString(),
       user_id: testUserId 
+    })
+    .finally(() => {
+      setIsFormSubmitting(false);
     });
   };
 
@@ -147,17 +151,6 @@ const CheckInPage = () => {
       console.log("[CheckInPage] Submitting with data:", checkInData);
       
       checkIn(checkInData)
-        .then(() => {
-          // Only show success toast if no alert shown from checkIn
-          toast({
-            title: "Check-in Successful!",
-            description: `You checked in at ${data.venue_name}`,
-            duration: 5000,
-          });
-          
-          // Navigate after a short delay
-          setTimeout(() => navigate('/profile'), 1000);
-        })
         .catch((error: any) => {
           console.error("[CheckInPage] Error during check-in:", error);
           toast({
@@ -180,7 +173,7 @@ const CheckInPage = () => {
         duration: 5000,
       });
     }
-  }, [user, checkIn, navigate]);
+  }, [user, checkIn]);
 
   // Verify user authentication
   useEffect(() => {

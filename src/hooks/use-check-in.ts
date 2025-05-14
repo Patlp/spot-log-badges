@@ -60,6 +60,13 @@ export const useCheckIn = (props?: UseCheckInProps) => {
         props.onSuccess();
       }
       
+      // Show success toast
+      toast({
+        title: "Check-in complete!",
+        description: `Successfully checked in at ${checkInData.venue_name}`,
+        variant: "default"
+      });
+      
       // Navigate to profile page after successful check-in
       navigate("/profile");
       
