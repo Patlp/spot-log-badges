@@ -1,4 +1,7 @@
 
+// DO NOT MODIFY THIS FILE — This component is part of the working check-in system. 
+// Any changes may break the Nearby, Manual, or Test check-in workflows.
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { awardFirstVisitBadge } from "@/lib/supabase";

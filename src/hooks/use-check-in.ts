@@ -1,8 +1,12 @@
 
+// DO NOT MODIFY THIS FILE — This component is part of the working check-in system. 
+// Any changes may break the Nearby, Manual, or Test check-in workflows.
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { processCheckIn } from "@/lib/checkinEngine";
+import { debugLog, isDebugMode } from "@/lib/debugMode";
 
 type UseCheckInProps = {
   onSuccess?: () => void;
@@ -18,22 +22,30 @@ export const useCheckIn = (props?: UseCheckInProps) => {
   // - Test Button check-in
   const handleCheckInSubmission = async (checkInData: any) => {
     if (isSubmitting) {
-      console.log("Check-in already in progress, preventing duplicate submission");
+      debugLog("useCheckIn", "Check-in already in progress, preventing duplicate submission");
       return;
     }
     
-    console.log("Check-in started", checkInData);
+    if (isDebugMode) {
+      toast({
+        title: "Debug: Check-in started",
+        description: `Venue: ${checkInData.venue_name}`,
+        variant: "default",
+      });
+    }
+    
+    debugLog("useCheckIn", "Check-in started", checkInData);
     setIsSubmitting(true);
     
     try {
       // Forward to our new centralized check-in engine
-      console.log("Forwarding to check-in engine", checkInData);
+      debugLog("useCheckIn", "Forwarding to check-in engine", checkInData);
       const result = await processCheckIn(checkInData, {
         onSuccess: props?.onSuccess,
-        debugMode: true
+        debugMode: isDebugMode
       });
       
-      console.log("Check-in engine result:", result);
+      debugLog("useCheckIn", "Check-in engine result:", result);
       
       // Handle navigation to profile if successful
       if (result.success) {

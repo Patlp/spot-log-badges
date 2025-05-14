@@ -1,4 +1,7 @@
 
+// DO NOT MODIFY THIS FILE — This component is part of the working check-in system. 
+// Any changes may break the Nearby, Manual, or Test check-in workflows.
+
 import { useState, useContext } from "react";
 import { useCheckInEngine } from "@/lib/checkinEngine";
 import { AuthContext } from "../../../App";
