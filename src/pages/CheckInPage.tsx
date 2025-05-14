@@ -25,7 +25,6 @@ const CheckInPage = () => {
   // States for UI
   const [activeTab, setActiveTab] = useState<string>("manual");
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   
   // Get current date/time in ISO format for the default value
   const currentDateTime = new Date().toISOString().slice(0, 16);
@@ -58,11 +57,11 @@ const CheckInPage = () => {
     fetchNearbyPlaces 
   } = useNearbyPlaces();
   
-  const { checkIn } = useCheckIn();
+  const { checkIn, isSubmitting } = useCheckIn();
 
   console.log("[CheckInPage] Render state:", { 
     user: !!user, 
-    isSubmitting: isFormSubmitting, 
+    isSubmitting,
     activeTab, 
     hasSelectedPlace: !!selectedPlace,
     formValues: form.getValues(),
@@ -76,31 +75,12 @@ const CheckInPage = () => {
     // Use actual user ID if available, otherwise use a test ID
     const testUserId = user?.id || "test-user-id";
     
-    setIsFormSubmitting(true);
-    
     checkIn({ 
       venue_name: "Test Place",
       venue_type: "Restaurant", 
       location: "Test Location",
       check_in_time: new Date().toISOString(),
       user_id: testUserId 
-    })
-    .then(() => {
-      // Success handling is done by the useCheckIn hook
-      console.log("[CheckInPage] Test check-in completed successfully");
-      navigate("/profile");
-    })
-    .catch((error) => {
-      console.error("[CheckInPage] Test check-in failed:", error);
-      toast({
-        title: "Check-in Failed",
-        description: error.message || "There was a problem with your check-in",
-        variant: "destructive",
-      });
-    })
-    .finally(() => {
-      console.log("[CheckInPage] Test check-in process finished, resetting form state");
-      setIsFormSubmitting(false);
     });
   };
 
@@ -163,10 +143,7 @@ const CheckInPage = () => {
     }
     
     try {
-      setIsFormSubmitting(true);
-      console.log("[CheckInPage] Setting isFormSubmitting to true");
-      
-      // Directly use checkIn to submit the data
+      // Prepare check-in data and submit
       const checkInData = {
         user_id: user.id,
         venue_name: data.venue_name,
@@ -177,34 +154,9 @@ const CheckInPage = () => {
       };
       
       console.log("[CheckInPage] Submitting with data:", checkInData);
-      
-      checkIn(checkInData)
-        .then(() => {
-          // Success handling
-          console.log("[CheckInPage] Check-in completed successfully");
-          toast({
-            title: "Check-in Successful", 
-            description: `Successfully checked in at ${data.venue_name}`,
-            variant: "default"
-          });
-          navigate("/profile");
-        })
-        .catch((error) => {
-          console.error("[CheckInPage] Error during check-in:", error);
-          toast({
-            title: "Check-in Failed",
-            description: error.message || "There was a problem with your check-in",
-            variant: "destructive",
-            duration: 5000,
-          });
-        })
-        .finally(() => {
-          console.log("[CheckInPage] Check-in process finished, resetting form state");
-          setIsFormSubmitting(false);
-        });
+      checkIn(checkInData);
     } catch (error: any) {
       console.error("[CheckInPage] Synchronous error during check-in:", error);
-      setIsFormSubmitting(false);
       
       toast({
         title: "Check-in Failed",
@@ -212,7 +164,7 @@ const CheckInPage = () => {
         duration: 5000,
       });
     }
-  }, [user, checkIn, navigate]);
+  }, [user, checkIn]);
 
   // Verify user authentication
   useEffect(() => {
@@ -237,7 +189,7 @@ const CheckInPage = () => {
         onClick={handleTestCheckIn} 
         variant="outline" 
         className="mb-4 w-full"
-        disabled={isFormSubmitting}
+        disabled={isSubmitting}
       >
         Test Check-In Function
       </Button>
@@ -284,7 +236,7 @@ const CheckInPage = () => {
             <TabsContent value="manual" className="pt-4">
               <ManualCheckInForm 
                 form={form} 
-                isSubmitting={isFormSubmitting} 
+                isSubmitting={isSubmitting} 
                 onSubmit={onSubmit}
               />
             </TabsContent>
@@ -308,7 +260,7 @@ const CheckInPage = () => {
                 <PlaceDetails
                   selectedPlace={selectedPlace}
                   form={form}
-                  isSubmitting={isFormSubmitting}
+                  isSubmitting={isSubmitting}
                   onSubmit={onSubmit}
                 />
               )}
