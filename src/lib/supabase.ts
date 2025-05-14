@@ -197,14 +197,24 @@ export const getAllCheckIns = async (limit = 10) => {
 // Function to get accurate leaderboard data
 export const getAccurateLeaderboard = async () => {
   try {
-    // This query fetches directly from the profiles table which already
-    // has the correct counts maintained by our database triggers
+    console.log("Fetching leaderboard data - timestamp:", Date.now());
+    
+    // First, ensure all profiles have the most up-to-date counts
+    // This is a direct database call to refresh all counters
+    await supabase.rpc('refresh_all_profile_stats');
+    
+    // Then fetch the profiles with fresh data
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .order("unique_venues", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching leaderboard:", error);
+      throw error;
+    }
+    
+    console.log("Leaderboard data fetched:", data?.length, "profiles");
     return data;
   } catch (error) {
     console.error("Error getting accurate leaderboard data:", error);
