@@ -8,6 +8,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Loader2, MapPin } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
+import { useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../App";
+import { toast } from "@/hooks/use-toast";
+import { useCheckInEngine } from "@/lib/checkinEngine";
 
 // Define the form validation schema using zod
 export const checkInSchema = z.object({
@@ -28,19 +33,105 @@ interface ManualCheckInFormProps {
 
 export function ManualCheckInForm({ 
   form, 
-  isSubmitting, 
-  onSubmit
+  isSubmitting: parentIsSubmitting, 
+  onSubmit: parentOnSubmit
 }: ManualCheckInFormProps) {
-  console.log("[ManualCheckInForm] Render with isSubmitting:", isSubmitting);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   
-  const handleSubmit = (values: CheckInFormValues) => {
-    console.log("[ManualCheckInForm] Form submit with values:", values);
-    onSubmit(values);
+  // Use check-in engine
+  const { checkIn } = useCheckInEngine({ 
+    debugMode: true,
+    enableRedirect: false,
+    enableToasts: true
+  });
+
+  const handleManualCheckIn = async (values: CheckInFormValues) => {
+    // Prevent check-in if already submitting
+    if (isSubmitting || parentIsSubmitting) {
+      return;
+    }
+
+    console.log("[ManualCheckInForm] Starting check-in with values:", values);
+    
+    try {
+      // Validate user is logged in
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in to check in",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Set loading state
+      setIsSubmitting(true);
+      
+      // Prepare check-in data
+      const checkInData = {
+        user_id: user.id,
+        venue_name: values.venue_name,
+        venue_type: values.venue_type,
+        location: values.location,
+        check_in_time: values.check_in_time,
+        notes: values.notes
+      };
+      
+      // Show initial toast
+      toast({
+        title: "Checking in...",
+        description: `Processing check-in at ${values.venue_name}`,
+        variant: "default"
+      });
+      
+      // Execute check-in
+      const result = await checkIn(checkInData);
+      
+      console.log("[ManualCheckInForm] Check-in result:", result);
+      
+      if (result.success) {
+        // Show success toast
+        toast({
+          title: "Check-in Complete!",
+          description: `Successfully checked in at ${values.venue_name}`,
+          variant: "default"
+        });
+        
+        // If badge was awarded, show badge toast
+        if (result.badgeAwarded) {
+          toast({
+            title: "Badge Earned!",
+            description: "You earned a First Visit badge!",
+            variant: "default"
+          });
+        }
+        
+        // Use a short timeout to ensure toasts are visible, then redirect
+        setTimeout(() => {
+          navigate("/profile");
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("[ManualCheckInForm] Error during check-in:", error);
+      toast({
+        title: "Check-in Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const isButtonSubmitting = isSubmitting || parentIsSubmitting;
+  
+  console.log("[ManualCheckInForm] Render with isSubmitting:", isButtonSubmitting);
   
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleManualCheckIn)} className="space-y-4">
         {/* Venue Name */}
         <FormField
           control={form.control}
@@ -136,10 +227,10 @@ export function ManualCheckInForm({
 
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isButtonSubmitting}
           className="w-full"
         >
-          {isSubmitting ? (
+          {isButtonSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Checking In...
