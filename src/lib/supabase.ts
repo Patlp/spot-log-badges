@@ -199,63 +199,55 @@ export const getAccurateLeaderboard = async () => {
   try {
     console.log("Fetching leaderboard data - timestamp:", Date.now());
     
-    // First, try to refresh all profiles using the database function
-    try {
-      await supabase.rpc('refresh_all_profile_stats');
-      console.log("Successfully refreshed all profile stats via RPC");
-    } catch (refreshError) {
-      console.error("Failed to refresh profile stats via RPC:", refreshError);
+    // Skip the RPC call since it's failing and go straight to manual profile updating
+    console.log("Using manual profile stats refresh...");
+    
+    // Get all profiles first
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id");
       
-      // Manual fallback if the RPC method fails
-      console.log("Attempting manual profile stats refresh...");
+    if (profilesError) {
+      console.error("Error fetching profiles:", profilesError);
+    } else if (profiles) {
+      console.log(`Found ${profiles.length} profiles to update manually`);
       
-      // Get all profiles first
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id");
-        
-      if (profilesError) {
-        console.error("Error fetching profiles:", profilesError);
-      } else if (profiles) {
-        console.log(`Found ${profiles.length} profiles to update manually`);
-        
-        // Update each profile individually
-        for (const profile of profiles) {
-          try {
-            // Update check-in counts
-            const { count: checkInsCount } = await supabase
-              .from("check_ins")
-              .select("*", { count: 'exact', head: true })
-              .eq("user_id", profile.id);
-              
-            // Update unique venues count
-            const { data: venues } = await supabase
-              .from("check_ins")
-              .select("venue_name")
-              .eq("user_id", profile.id);
+      // Update each profile individually
+      for (const profile of profiles) {
+        try {
+          // Update check-in counts
+          const { count: checkInsCount } = await supabase
+            .from("check_ins")
+            .select("*", { count: 'exact', head: true })
+            .eq("user_id", profile.id);
             
-            const uniqueVenuesCount = venues ? new Set(venues.map(v => v.venue_name)).size : 0;
+          // Update unique venues count
+          const { data: venues } = await supabase
+            .from("check_ins")
+            .select("venue_name")
+            .eq("user_id", profile.id);
+          
+          const uniqueVenuesCount = venues ? new Set(venues.map(v => v.venue_name)).size : 0;
+          
+          // Update badge count
+          const { count: badgesCount } = await supabase
+            .from("badges")
+            .select("*", { count: 'exact', head: true })
+            .eq("user_id", profile.id);
             
-            // Update badge count
-            const { count: badgesCount } = await supabase
-              .from("badges")
-              .select("*", { count: 'exact', head: true })
-              .eq("user_id", profile.id);
-              
-            // Update the profile with the new counts
-            await supabase
-              .from("profiles")
-              .update({
-                total_check_ins: checkInsCount || 0,
-                unique_venues: uniqueVenuesCount,
-                total_badges: badgesCount || 0
-              })
-              .eq("id", profile.id);
-              
-            console.log(`Updated profile ${profile.id} with: ${checkInsCount} check-ins, ${uniqueVenuesCount} unique venues, ${badgesCount} badges`);
-          } catch (profileUpdateError) {
-            console.error(`Failed to update profile ${profile.id}:`, profileUpdateError);
-          }
+          // Update the profile with the new counts
+          await supabase
+            .from("profiles")
+            .update({
+              total_check_ins: checkInsCount || 0,
+              unique_venues: uniqueVenuesCount,
+              total_badges: badgesCount || 0
+            })
+            .eq("id", profile.id);
+            
+          console.log(`Updated profile ${profile.id} with: ${checkInsCount} check-ins, ${uniqueVenuesCount} unique venues, ${badgesCount} badges`);
+        } catch (profileUpdateError) {
+          console.error(`Failed to update profile ${profile.id}:`, profileUpdateError);
         }
       }
     }

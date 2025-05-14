@@ -80,9 +80,9 @@ const LeaderboardEntry = ({ profile, position, isCurrentUser }: LeaderboardEntry
           <p className="font-medium">
             {profile.username}
             {isCurrentUser && (
-              <Badge variant="outline" className="ml-2 text-xs">
+              <span className="ml-2 text-xs inline-flex items-center font-medium bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full text-xs">
                 You
-              </Badge>
+              </span>
             )}
           </p>
         </div>

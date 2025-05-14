@@ -7,7 +7,6 @@ import { toast } from "@/components/ui/use-toast";
 export const useLeaderboardRefresh = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
   const [refreshAttempts, setRefreshAttempts] = useState(0);
-  const MAX_REFRESH_ATTEMPTS = 3;
 
   // Use the getAccurateLeaderboard function with a timestamp-based key for forced refreshes
   const { 
@@ -23,7 +22,7 @@ export const useLeaderboardRefresh = () => {
     refetchOnWindowFocus: true, // Always refetch when window gets focus
     refetchOnMount: 'always', // Always refetch when component mounts
     retry: 2, // Retry failed requests twice
-    refetchInterval: false, // Don't auto-refetch at intervals (we'll handle this manually)
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
   });
 
   // Handle errors separately with useEffect
@@ -72,17 +71,6 @@ export const useLeaderboardRefresh = () => {
     console.log("Component mounted, refreshing leaderboard");
     refetchLeaderboard();
   }, [refetchLeaderboard]);
-
-  // Poll for updates more frequently (every 10 seconds) to keep data fresh
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      console.log("Polling interval, refreshing leaderboard");
-      setLastRefreshTime(Date.now());
-      setRefreshAttempts(0);
-    }, 10000); // 10 seconds
-    
-    return () => clearInterval(intervalId);
-  }, []);
 
   return {
     leaderboard,
