@@ -24,22 +24,23 @@ export const useLeaderboardRefresh = () => {
     refetchOnMount: 'always', // Always refetch when component mounts
     retry: 2, // Retry failed requests twice
     refetchInterval: false, // Don't auto-refetch at intervals (we'll handle this manually)
-    // Using onSettled instead of onError for better compatibility with TanStack Query v5
-    onSettled: (data, err) => {
-      if (err) {
-        console.error("Error fetching leaderboard data:", err);
-        // Show error toast only on first attempt to avoid spamming
-        if (refreshAttempts === 0) {
-          toast({
-            title: "Failed to refresh leaderboard",
-            description: "We're having trouble updating the leaderboard right now. Trying again...",
-            variant: "destructive",
-          });
-        }
-        setRefreshAttempts(prev => prev + 1);
-      }
-    }
   });
+
+  // Handle errors separately with useEffect
+  useEffect(() => {
+    if (isError && error) {
+      console.error("Error fetching leaderboard data:", error);
+      // Show error toast only on first attempt to avoid spamming
+      if (refreshAttempts === 0) {
+        toast({
+          title: "Failed to refresh leaderboard",
+          description: "We're having trouble updating the leaderboard right now. Trying again...",
+          variant: "destructive",
+        });
+      }
+      setRefreshAttempts(prev => prev + 1);
+    }
+  }, [isError, error, refreshAttempts]);
 
   // Manual refresh function that can be called by components
   const manualRefresh = () => {
