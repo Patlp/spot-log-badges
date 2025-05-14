@@ -88,7 +88,7 @@ export const useCheckIn = (options?: UseCheckInOptions) => {
           
           console.log("[useCheckIn] Check-in completed successfully:", resultData);
           return resultData[0];
-        } catch (e: any) { // Fixed line: explicitly typing the error as any
+        } catch (e: any) { // Fixed: explicitly typing the error as any
           console.error("[useCheckIn] Check-in insert error:", e);
           console.error("[useCheckIn] Error details:", {
             message: e.message,
