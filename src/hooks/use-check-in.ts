@@ -1,12 +1,15 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 type UseCheckInProps = {
   onSuccess?: () => void;
 };
 
 export const useCheckIn = (props?: UseCheckInProps) => {
+  const navigate = useNavigate();
+  
   const checkIn = async (checkInData: any) => {
     console.log("Check-in started", checkInData);
     try {
@@ -26,6 +29,9 @@ export const useCheckIn = (props?: UseCheckInProps) => {
       if (props?.onSuccess) {
         props.onSuccess();
       }
+      
+      // Navigate to profile page after successful check-in
+      navigate("/profile");
       
       return data;
     } catch (e: any) {
