@@ -1,3 +1,4 @@
+
 import { useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
@@ -84,7 +85,21 @@ const CheckInPage = () => {
       check_in_time: new Date().toISOString(),
       user_id: testUserId 
     })
+    .then(() => {
+      // Success handling is done by the useCheckIn hook
+      console.log("[CheckInPage] Test check-in completed successfully");
+      navigate("/profile");
+    })
+    .catch((error) => {
+      console.error("[CheckInPage] Test check-in failed:", error);
+      toast({
+        title: "Check-in Failed",
+        description: error.message || "There was a problem with your check-in",
+        variant: "destructive",
+      });
+    })
     .finally(() => {
+      console.log("[CheckInPage] Test check-in process finished, resetting form state");
       setIsFormSubmitting(false);
     });
   };
@@ -135,8 +150,21 @@ const CheckInPage = () => {
       return;
     }
     
+    // Validate required fields
+    if (!data.venue_name || !data.venue_type || !data.location || !data.check_in_time) {
+      console.error("[CheckInPage] Missing required check-in fields:", data);
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields before checking in.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+    
     try {
       setIsFormSubmitting(true);
+      console.log("[CheckInPage] Setting isFormSubmitting to true");
       
       // Directly use checkIn to submit the data
       const checkInData = {
@@ -151,7 +179,17 @@ const CheckInPage = () => {
       console.log("[CheckInPage] Submitting with data:", checkInData);
       
       checkIn(checkInData)
-        .catch((error: any) => {
+        .then(() => {
+          // Success handling
+          console.log("[CheckInPage] Check-in completed successfully");
+          toast({
+            title: "Check-in Successful", 
+            description: `Successfully checked in at ${data.venue_name}`,
+            variant: "default"
+          });
+          navigate("/profile");
+        })
+        .catch((error) => {
           console.error("[CheckInPage] Error during check-in:", error);
           toast({
             title: "Check-in Failed",
@@ -161,6 +199,7 @@ const CheckInPage = () => {
           });
         })
         .finally(() => {
+          console.log("[CheckInPage] Check-in process finished, resetting form state");
           setIsFormSubmitting(false);
         });
     } catch (error: any) {
@@ -173,7 +212,7 @@ const CheckInPage = () => {
         duration: 5000,
       });
     }
-  }, [user, checkIn]);
+  }, [user, checkIn, navigate]);
 
   // Verify user authentication
   useEffect(() => {
@@ -198,6 +237,7 @@ const CheckInPage = () => {
         onClick={handleTestCheckIn} 
         variant="outline" 
         className="mb-4 w-full"
+        disabled={isFormSubmitting}
       >
         Test Check-In Function
       </Button>
