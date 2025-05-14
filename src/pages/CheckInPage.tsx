@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Building, MapPin } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 // Import components
 import { LocationControl } from "@/components/check-in/LocationControl";
@@ -56,7 +57,7 @@ const CheckInPage = () => {
     fetchNearbyPlaces 
   } = useNearbyPlaces();
   
-  const { isSubmitting, checkInError, handleCheckIn } = useCheckIn({
+  const { isSubmitting, checkInError, handleCheckIn, checkIn } = useCheckIn({
     onSuccess: () => {
       console.log("[CheckInPage] Check-in completed successfully");
       // The navigation is now handled inside the useCheckIn hook after a small delay
@@ -71,6 +72,22 @@ const CheckInPage = () => {
     formValues: form.getValues(),
     nearbyPlacesCount: nearbyPlaces.length
   });
+
+  // Function to handle the test check-in
+  const handleTestCheckIn = () => {
+    console.log("[CheckInPage] Testing check-in with sample data");
+    
+    // Use actual user ID if available, otherwise use a test ID
+    const testUserId = user?.id || "test-user-id";
+    
+    checkIn({ 
+      venue_name: "Test Place",
+      venue_type: "Restaurant", 
+      location: "Test Location",
+      check_in_time: new Date().toISOString(),
+      user_id: testUserId 
+    });
+  };
 
   // Update form when a place is selected
   useEffect(() => {
@@ -147,6 +164,15 @@ const CheckInPage = () => {
   return (
     <div className="max-w-lg mx-auto">
       <h1 className="text-3xl font-bold mb-6">Check In</h1>
+
+      {/* Add Test Button */}
+      <Button 
+        onClick={handleTestCheckIn} 
+        variant="outline" 
+        className="mb-4 w-full"
+      >
+        Test Check-In Function
+      </Button>
 
       <Card>
         <CardHeader>
