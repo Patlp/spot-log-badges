@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LocateFixed, Building, MapPin } from "lucide-react";
+import { LocateFixed, Building, MapPin, AlertCircle } from "lucide-react";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 
 export type Place = {
@@ -35,6 +35,28 @@ export function PlacesList({
   onRetryFetch,
   onSwitchToManual
 }: PlacesListProps) {
+  // Add diagnostic state
+  const [diagnosticInfo, setDiagnosticInfo] = useState<{
+    isVisible: boolean;
+    message?: string;
+    isError?: boolean;
+  }>({ isVisible: false });
+  
+  // Debug function to show diagnostic info
+  const showDiagnosticInfo = (message: string, isError = false) => {
+    console.log("[PlacesList] Diagnostic:", message);
+    setDiagnosticInfo({
+      isVisible: true,
+      message,
+      isError
+    });
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      setDiagnosticInfo(prev => ({ ...prev, isVisible: false }));
+    }, 5000);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -55,7 +77,10 @@ export function PlacesList({
             <Button 
               variant="outline" 
               size="sm"
-              onClick={onRetryFetch}
+              onClick={() => {
+                console.log("[PlacesList] Retry fetch button clicked");
+                onRetryFetch();
+              }}
             >
               <LocateFixed className="mr-2 h-3 w-3" />
               Retry
@@ -63,7 +88,10 @@ export function PlacesList({
             <Button 
               variant="outline" 
               size="sm"
-              onClick={onSwitchToManual}
+              onClick={() => {
+                console.log("[PlacesList] Switch to manual button clicked");
+                onSwitchToManual();
+              }}
             >
               <Building className="mr-2 h-3 w-3" />
               Manual Entry
@@ -76,11 +104,23 @@ export function PlacesList({
 
   return (
     <div className="grid gap-2 max-h-64 overflow-y-auto">
+      {/* Diagnostic info box */}
+      {diagnosticInfo.isVisible && (
+        <Alert variant={diagnosticInfo.isError ? "destructive" : "default"} className="mb-2">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{diagnosticInfo.message}</AlertDescription>
+        </Alert>
+      )}
+    
       {places.map((place) => (
         <Card 
           key={place.place_id}
           className={`cursor-pointer p-3 transition ${selectedPlace?.place_id === place.place_id ? 'border-2 border-primary ring-1 ring-primary' : 'hover:border-primary/50'}`}
-          onClick={() => onSelectPlace(place)}
+          onClick={() => {
+            console.log("[PlacesList] Place selected:", place.name);
+            onSelectPlace(place);
+            showDiagnosticInfo(`Selected place: ${place.name}`);
+          }}
         >
           <div className="flex justify-between">
             <div>

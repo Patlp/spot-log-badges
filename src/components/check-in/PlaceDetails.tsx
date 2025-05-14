@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,11 @@ import { type Place } from "./PlacesList";
 import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useCheckInEngine } from "@/lib/checkinEngine";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../App";
+import { useContext } from "react";
+import { toast } from "@/hooks/use-toast";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -21,35 +26,100 @@ interface PlaceDetailsProps {
 export function PlaceDetails({ 
   selectedPlace, 
   form, 
-  isSubmitting,
-  onSubmit
+  isSubmitting: parentIsSubmitting,
+  onSubmit: parentOnSubmit
 }: PlaceDetailsProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<string | null>(null);
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+  
+  // Use our new check-in engine with debug mode enabled
+  const { checkIn, isSubmitting: engineIsSubmitting } = useCheckInEngine({ 
+    debugMode: true,
+    // Don't navigate or show toasts here - we'll handle those ourselves
+    enableRedirect: false,
+    enableToasts: false
+  });
 
-  const handleSubmit = (values: any) => {
-    // Clear any previous error
+  // Display diagnostic info for 5 seconds
+  const showDiagnostic = (message: string) => {
+    console.log("[PlaceDetails] Diagnostic:", message);
+    setDiagnosticInfo(message);
+    
+    setTimeout(() => {
+      setDiagnosticInfo(null);
+    }, 5000);
+  };
+
+  const handleSubmit = async (values: any) => {
+    // Clear previous errors and show diagnostic
     setSubmitError(null);
-    console.log("[PlaceDetails] Submitting form with values:", values);
+    showDiagnostic("Starting check-in submission");
     
     try {
+      console.log("[PlaceDetails] Submitting form with values:", values);
+      
+      if (!user) {
+        const error = "Authentication required to check in";
+        setSubmitError(error);
+        showDiagnostic(`Error: ${error}`);
+        return;
+      }
+      
       // Ensure we're passing all the required fields
       const checkInData = {
-        ...values,
-        // Make sure these fields are explicitly set
+        user_id: user.id,
         venue_name: values.venue_name || selectedPlace.name,
+        venue_type: values.venue_type || mapGoogleTypeToVenueType(selectedPlace.types),
         location: values.location || selectedPlace.address,
-        venue_type: values.venue_type || mapGoogleTypeToVenueType(selectedPlace.types)
+        check_in_time: values.check_in_time,
+        notes: values.notes
       };
       
-      console.log("[PlaceDetails] Enhanced check-in data:", checkInData);
-      onSubmit(checkInData);
+      console.log("[PlaceDetails] Prepared check-in data:", checkInData);
+      showDiagnostic("Submitting check-in via engine");
+      
+      // Use our new check-in engine
+      const result = await checkIn(checkInData);
+      
+      console.log("[PlaceDetails] Check-in result:", result);
+      
+      if (result.success) {
+        showDiagnostic(`Check-in successful! Badge awarded: ${result.badgeAwarded}`);
+        
+        toast({
+          title: "Check-in complete!",
+          description: `Successfully checked in at ${checkInData.venue_name}`,
+          variant: "default"
+        });
+        
+        // Use a short timeout before navigating to ensure toast is visible
+        setTimeout(() => {
+          navigate("/profile");
+        }, 500);
+      } else {
+        setSubmitError(result.error?.message || "Check-in failed");
+        showDiagnostic(`Error: ${result.error?.message || "Unknown error"}`);
+      }
+      
     } catch (error: any) {
-      console.error("[PlaceDetails] Synchronous error during submit:", error);
+      console.error("[PlaceDetails] Error during submit:", error);
       setSubmitError(error.message || "An unexpected error occurred");
+      showDiagnostic(`Exception: ${error.message}`);
     }
   };
 
-  console.log("[PlaceDetails] Render with isSubmitting:", isSubmitting);
+  // For logging purposes, show when component renders with what state
+  useEffect(() => {
+    console.log("[PlaceDetails] Render with states:", { 
+      parentIsSubmitting, 
+      engineIsSubmitting, 
+      selectedPlace: selectedPlace.name
+    });
+  }, [parentIsSubmitting, engineIsSubmitting, selectedPlace]);
+
+  const isFormSubmitting = parentIsSubmitting || engineIsSubmitting;
 
   return (
     <Form {...form}>
@@ -58,6 +128,14 @@ export function PlaceDetails({
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
+        
+        {diagnosticInfo && (
+          <Alert variant="default" className="bg-blue-50 border-blue-200">
+            <AlertDescription className="text-blue-700">
+              Diagnostic: {diagnosticInfo}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -104,10 +182,10 @@ export function PlaceDetails({
 
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isFormSubmitting}
           className="w-full"
         >
-          {isSubmitting ? (
+          {isFormSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Checking In at {selectedPlace.name}...

@@ -1,9 +1,8 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import { awardFirstVisitBadge } from "@/lib/supabase";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
+import { processCheckIn } from "@/lib/checkinEngine";
 
 type UseCheckInProps = {
   onSuccess?: () => void;
@@ -27,66 +26,23 @@ export const useCheckIn = (props?: UseCheckInProps) => {
     setIsSubmitting(true);
     
     try {
-      // 1. Insert the check-in data
-      const { data, error } = await supabase
-        .from("check_ins")
-        .insert([checkInData])
-        .select();
-
-      console.log("Insert result:", { data, error });
-
-      if (error) {
-        console.error("Insert error:", error);
-        toast({
-          title: "Check-in Failed",
-          description: error.message || "There was a problem with your check-in",
-          variant: "destructive",
-          duration: 5000,
-        });
-        return;
-      }
-
-      // 2. Try to award a badge, but don't let it interfere with the check-in process
-      try {
-        // Only attempt to award a badge if we have the required data
-        if (data && data[0] && checkInData.user_id && checkInData.venue_name) {
-          console.log("Attempting to award first visit badge");
-          const badgeAwarded = await awardFirstVisitBadge(
-            checkInData.user_id, 
-            checkInData.venue_name
-          );
-          
-          if (badgeAwarded) {
-            toast({ 
-              title: "Badge Earned!", 
-              description: "You earned a First Visit badge for checking in here for the first time.",
-              variant: "default" 
-            });
-          }
-        }
-      } catch (badgeError) {
-        // Log badge error but don't fail the check-in
-        console.error("Error awarding badge (non-critical):", badgeError);
-      }
-
-      // 3. Call the onSuccess callback if provided
-      if (props?.onSuccess) {
-        props.onSuccess();
-      }
-      
-      // 4. Show success toast
-      toast({
-        title: "Check-in complete!",
-        description: `Successfully checked in at ${checkInData.venue_name}`,
-        variant: "default"
+      // Forward to our new centralized check-in engine
+      console.log("Forwarding to check-in engine", checkInData);
+      const result = await processCheckIn(checkInData, {
+        onSuccess: props?.onSuccess,
+        debugMode: true
       });
       
-      // 5. Navigate to profile page after successful check-in
-      navigate("/profile");
+      console.log("Check-in engine result:", result);
       
-      return data;
+      // Handle navigation to profile if successful
+      if (result.success) {
+        navigate("/profile");
+      }
+      
+      return result.data;
     } catch (e: any) {
-      console.error("Unexpected error:", e);
+      console.error("Unexpected error in useCheckIn:", e);
       toast({
         title: "Check-in Failed",
         description: e.message || "There was a problem with your check-in",
