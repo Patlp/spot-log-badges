@@ -3,20 +3,19 @@ import { useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../App";
 import { toast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building, MapPin } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 
 // Import components
 import { LocationControl } from "@/components/check-in/LocationControl";
-import { PlacesList, Place } from "@/components/check-in/PlacesList";
-import { PlaceDetails } from "@/components/check-in/PlaceDetails";
 import { ManualCheckInForm, checkInSchema, CheckInFormValues } from "@/components/check-in/ManualCheckInForm";
 import { useCheckIn } from "@/hooks/use-check-in";
 import { useNearbyPlaces } from "@/hooks/use-nearby-places";
+import { TestCheckInButton } from "@/components/check-in/TestCheckInButton";
+import { CheckInHeader } from "@/components/check-in/CheckInHeader";
+import { CheckInTabs } from "@/components/check-in/CheckInTabs";
+import { NearbyPlacesTab } from "@/components/check-in/NearbyPlacesTab";
+import { Place } from "@/components/check-in/PlacesList";
 
 const CheckInPage = () => {
   const { user } = useContext(AuthContext);
@@ -67,22 +66,6 @@ const CheckInPage = () => {
     formValues: form.getValues(),
     nearbyPlacesCount: nearbyPlaces.length
   });
-
-  // Function to handle the test check-in
-  const handleTestCheckIn = () => {
-    console.log("[CheckInPage] Testing check-in with sample data");
-    
-    // Use actual user ID if available, otherwise use a test ID
-    const testUserId = user?.id || "test-user-id";
-    
-    checkIn({ 
-      venue_name: "Test Place",
-      venue_type: "Restaurant", 
-      location: "Test Location",
-      check_in_time: new Date().toISOString(),
-      user_id: testUserId 
-    });
-  };
 
   // Update form when a place is selected
   useEffect(() => {
@@ -184,96 +167,49 @@ const CheckInPage = () => {
     <div className="max-w-lg mx-auto">
       <h1 className="text-3xl font-bold mb-6">Check In</h1>
 
-      {/* Add Test Button */}
-      <Button 
-        onClick={handleTestCheckIn} 
-        variant="outline" 
-        className="mb-4 w-full"
-        disabled={isSubmitting}
-      >
-        Test Check-In Function
-      </Button>
+      {/* Test Check-In Button */}
+      <TestCheckInButton userId={user?.id} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Where are you now?</CardTitle>
-          <CardDescription>
-            Log your visit and earn badges for the places you go
-          </CardDescription>
-        </CardHeader>
+      <CheckInHeader>
+        {/* Location Control Component */}
+        <LocationControl 
+          useLocation={useLocation}
+          isLoadingPlaces={isLoadingPlaces}
+          onToggleLocation={handleToggleLocation}
+          onLocationFound={handleLocationFound}
+          onLocationError={handleLocationError}
+          onLoadingChange={handleLoadingChange}
+          onRetryFetch={handleRetryFetchPlaces}
+        />
 
-        <CardContent>
-          {/* Location Control Component */}
-          <LocationControl 
-            useLocation={useLocation}
-            isLoadingPlaces={isLoadingPlaces}
-            onToggleLocation={handleToggleLocation}
-            onLocationFound={handleLocationFound}
-            onLocationError={handleLocationError}
-            onLoadingChange={handleLoadingChange}
-            onRetryFetch={handleRetryFetchPlaces}
-          />
-
-          {/* Tabs for Manual or Nearby Places */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="manual">
-                <Building className="h-4 w-4 mr-2" />
-                Manual Entry
-              </TabsTrigger>
-              <TabsTrigger 
-                value="nearby" 
-                disabled={isLoadingPlaces || (nearbyPlaces.length === 0 && useLocation && !isLoadingPlaces)}
-              >
-                <MapPin className="h-4 w-4 mr-2" />
-                {nearbyPlaces.length > 0 
-                  ? `Nearby Places (${nearbyPlaces.length})` 
-                  : 'Nearby Places'}
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Manual Entry Tab */}
-            <TabsContent value="manual" className="pt-4">
-              <ManualCheckInForm 
-                form={form} 
-                isSubmitting={isSubmitting} 
-                onSubmit={onSubmit}
-              />
-            </TabsContent>
-
-            {/* Nearby Places Tab */}
-            <TabsContent value="nearby" className="pt-4">
-              <div className="mb-4">
-                <h3 className="text-lg font-medium mb-3">Select a place to check in</h3>
-                
-                <PlacesList 
-                  places={nearbyPlaces}
-                  isLoading={isLoadingPlaces}
-                  selectedPlace={selectedPlace}
-                  onSelectPlace={setSelectedPlace}
-                  onRetryFetch={handleRetryFetchPlaces}
-                  onSwitchToManual={handleSwitchToManual}
-                />
-              </div>
-
-              {selectedPlace && (
-                <PlaceDetails
-                  selectedPlace={selectedPlace}
-                  form={form}
-                  isSubmitting={isSubmitting}
-                  onSubmit={onSubmit}
-                />
-              )}
-              
-              {!selectedPlace && !isLoadingPlaces && nearbyPlaces.length > 0 && (
-                <div className="text-center text-muted-foreground">
-                  Please select a place from the list above to check in
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+        {/* Tabs for Manual or Nearby Places */}
+        <CheckInTabs
+          nearbyPlaces={nearbyPlaces}
+          isLoadingPlaces={isLoadingPlaces}
+          useLocation={useLocation}
+          onTabChange={setActiveTab}
+          manualTabContent={
+            <ManualCheckInForm 
+              form={form} 
+              isSubmitting={isSubmitting} 
+              onSubmit={onSubmit}
+            />
+          }
+          nearbyTabContent={
+            <NearbyPlacesTab
+              nearbyPlaces={nearbyPlaces}
+              isLoadingPlaces={isLoadingPlaces}
+              selectedPlace={selectedPlace}
+              setSelectedPlace={setSelectedPlace}
+              form={form}
+              isSubmitting={isSubmitting}
+              onSubmit={onSubmit}
+              onRetryFetch={handleRetryFetchPlaces}
+              onSwitchToManual={handleSwitchToManual}
+            />
+          }
+        />
+      </CheckInHeader>
     </div>
   );
 };
