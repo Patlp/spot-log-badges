@@ -26,21 +26,33 @@ export const useCheckIn = (props?: UseCheckInProps) => {
         throw new Error(error.message);
       }
 
-      // Award first visit badge if this is the user's first visit to this venue
-      if (data && data[0]) {
-        console.log("Attempting to award first visit badge");
-        const badgeAwarded = await awardFirstVisitBadge(
-          checkInData.user_id, 
-          checkInData.venue_name
-        );
-        
-        if (badgeAwarded) {
-          toast({ 
-            title: "Badge Earned!", 
-            description: "You earned a First Visit badge for checking in here for the first time.",
-            variant: "default" 
-          });
+      // Try to award a badge, but don't let it interfere with the check-in process
+      try {
+        // Only attempt to award a badge if we have the required data
+        if (data && data[0] && checkInData.user_id && checkInData.venue_name) {
+          console.log("Attempting to award first visit badge");
+          const badgeAwarded = await awardFirstVisitBadge(
+            checkInData.user_id, 
+            checkInData.venue_name
+          );
+          
+          if (badgeAwarded) {
+            toast({ 
+              title: "Badge Earned!", 
+              description: "You earned a First Visit badge for checking in here for the first time.",
+              variant: "default" 
+            });
+          }
         }
+      } catch (badgeError) {
+        // Log badge error but don't fail the check-in
+        console.error("Error awarding badge (non-critical):", badgeError);
+        // Optional: Show a toast that badge awarding failed, but check-in succeeded
+        // toast({
+        //   title: "Check-in Successful",
+        //   description: "Your check-in was recorded, but we couldn't process badges at this time.",
+        //   variant: "warning"
+        // });
       }
 
       // Call the onSuccess callback if provided
