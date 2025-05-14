@@ -32,7 +32,17 @@ export function PlaceDetails({
     console.log("[PlaceDetails] Submitting form with values:", values);
     
     try {
-      onSubmit(values);
+      // Ensure we're passing all the required fields
+      const checkInData = {
+        ...values,
+        // Make sure these fields are explicitly set
+        venue_name: values.venue_name || selectedPlace.name,
+        location: values.location || selectedPlace.address,
+        venue_type: values.venue_type || mapGoogleTypeToVenueType(selectedPlace.types)
+      };
+      
+      console.log("[PlaceDetails] Enhanced check-in data:", checkInData);
+      onSubmit(checkInData);
     } catch (error: any) {
       console.error("[PlaceDetails] Synchronous error during submit:", error);
       setSubmitError(error.message || "An unexpected error occurred");

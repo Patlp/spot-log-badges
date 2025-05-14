@@ -25,6 +25,7 @@ const CheckInPage = () => {
   // States for UI
   const [activeTab, setActiveTab] = useState<string>("manual");
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   
   // Get current date/time in ISO format for the default value
   const currentDateTime = new Date().toISOString().slice(0, 16);
@@ -57,16 +58,11 @@ const CheckInPage = () => {
     fetchNearbyPlaces 
   } = useNearbyPlaces();
   
-  const { isSubmitting, checkInError, handleCheckIn, checkIn } = useCheckIn({
-    onSuccess: () => {
-      console.log("[CheckInPage] Check-in completed successfully");
-      // The navigation is now handled inside the useCheckIn hook after a small delay
-    }
-  });
+  const { checkIn } = useCheckIn();
 
   console.log("[CheckInPage] Render state:", { 
     user: !!user, 
-    isSubmitting, 
+    isSubmitting: isFormSubmitting, 
     activeTab, 
     hasSelectedPlace: !!selectedPlace,
     formValues: form.getValues(),
@@ -136,16 +132,55 @@ const CheckInPage = () => {
     }
     
     try {
-      handleCheckIn(data, user.id, selectedPlace);
+      setIsFormSubmitting(true);
+      
+      // Directly use checkIn to submit the data
+      const checkInData = {
+        user_id: user.id,
+        venue_name: data.venue_name,
+        venue_type: data.venue_type,
+        location: data.location,
+        check_in_time: data.check_in_time,
+        notes: data.notes || null
+      };
+      
+      console.log("[CheckInPage] Submitting with data:", checkInData);
+      
+      checkIn(checkInData)
+        .then(() => {
+          // Only show success toast if no alert shown from checkIn
+          toast({
+            title: "Check-in Successful!",
+            description: `You checked in at ${data.venue_name}`,
+            duration: 5000,
+          });
+          
+          // Navigate after a short delay
+          setTimeout(() => navigate('/profile'), 1000);
+        })
+        .catch((error: any) => {
+          console.error("[CheckInPage] Error during check-in:", error);
+          toast({
+            title: "Check-in Failed",
+            description: error.message || "There was a problem with your check-in",
+            variant: "destructive",
+            duration: 5000,
+          });
+        })
+        .finally(() => {
+          setIsFormSubmitting(false);
+        });
     } catch (error: any) {
-      console.error("[CheckInPage] Error during check-in submission:", error);
+      console.error("[CheckInPage] Synchronous error during check-in:", error);
+      setIsFormSubmitting(false);
+      
       toast({
         title: "Check-in Failed",
         description: "There was an error processing your check-in. Please try again.",
         duration: 5000,
       });
     }
-  }, [user, handleCheckIn, selectedPlace]);
+  }, [user, checkIn, navigate]);
 
   // Verify user authentication
   useEffect(() => {
@@ -216,7 +251,7 @@ const CheckInPage = () => {
             <TabsContent value="manual" className="pt-4">
               <ManualCheckInForm 
                 form={form} 
-                isSubmitting={isSubmitting} 
+                isSubmitting={isFormSubmitting} 
                 onSubmit={onSubmit}
               />
             </TabsContent>
@@ -240,7 +275,7 @@ const CheckInPage = () => {
                 <PlaceDetails
                   selectedPlace={selectedPlace}
                   form={form}
-                  isSubmitting={isSubmitting}
+                  isSubmitting={isFormSubmitting}
                   onSubmit={onSubmit}
                 />
               )}
