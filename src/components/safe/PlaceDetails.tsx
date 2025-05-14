@@ -1,4 +1,8 @@
 
+// DO NOT MODIFY – working check-in implementation
+// This is a locked implementation of the check-in functionality to prevent regressions
+// It works with the central check-in engine and handles all required visual feedback
+
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,8 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, MapPin, AlertTriangle } from "lucide-react";
-import { type Place } from "./PlacesList";
-import { UseFormReturn } from "react-hook-form";
 import { mapGoogleTypeToVenueType } from "@/services/places";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useCheckInEngine } from "@/lib/checkinEngine";
@@ -15,6 +17,8 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App";
 import { useContext } from "react";
 import { toast } from "@/hooks/use-toast";
+import { type Place } from "../check-in/PlacesList";
+import { UseFormReturn } from "react-hook-form";
 
 interface PlaceDetailsProps {
   selectedPlace: Place;
@@ -23,7 +27,7 @@ interface PlaceDetailsProps {
   onSubmit: (values: any) => void;
 }
 
-export function PlaceDetails({ 
+export function SafePlaceDetails({ 
   selectedPlace, 
   form, 
   isSubmitting: parentIsSubmitting,
@@ -43,7 +47,7 @@ export function PlaceDetails({
 
   // Display diagnostic info for 5 seconds
   const showDiagnostic = (message: string) => {
-    console.log("[PlaceDetails] Diagnostic:", message);
+    console.log("[SafePlaceDetails] Diagnostic:", message);
     setDiagnosticInfo(message);
     
     setTimeout(() => {
@@ -64,7 +68,7 @@ export function PlaceDetails({
     });
     
     try {
-      console.log("[PlaceDetails] Submitting form with values:", values);
+      console.log("[SafePlaceDetails] Submitting form with values:", values);
       
       if (!user) {
         const error = "Authentication required to check in";
@@ -83,13 +87,13 @@ export function PlaceDetails({
         notes: values.notes
       };
       
-      console.log("[PlaceDetails] Prepared check-in data:", checkInData);
+      console.log("[SafePlaceDetails] Prepared check-in data:", checkInData);
       showDiagnostic("Submitting check-in via engine");
       
       // Use our check-in engine
       const result = await checkIn(checkInData);
       
-      console.log("[PlaceDetails] Check-in result:", result);
+      console.log("[SafePlaceDetails] Check-in result:", result);
       
       if (result.success) {
         showDiagnostic(`Check-in successful! Badge awarded: ${result.badgeAwarded}`);
@@ -103,13 +107,13 @@ export function PlaceDetails({
         
         // Use a short timeout before navigating to ensure toast is visible
         setTimeout(() => {
-          console.log("[PlaceDetails] Navigating to profile after successful check-in");
+          console.log("[SafePlaceDetails] Navigating to profile after successful check-in");
           
           // Use regular navigation, but if that fails, we'll fallback to direct location change
           try {
             navigate("/profile");
           } catch (navError) {
-            console.error("[PlaceDetails] Navigation error, using fallback:", navError);
+            console.error("[SafePlaceDetails] Navigation error, using fallback:", navError);
             window.location.href = "/profile";
           }
         }, 500);
@@ -119,7 +123,7 @@ export function PlaceDetails({
       }
       
     } catch (error: any) {
-      console.error("[PlaceDetails] Error during submit:", error);
+      console.error("[SafePlaceDetails] Error during submit:", error);
       setSubmitError(error.message || "An unexpected error occurred");
       showDiagnostic(`Exception: ${error.message}`);
     }
@@ -127,7 +131,7 @@ export function PlaceDetails({
 
   // For logging purposes, show when component renders with what state
   useEffect(() => {
-    console.log("[PlaceDetails] Render with states:", { 
+    console.log("[SafePlaceDetails] Render with states:", { 
       parentIsSubmitting, 
       engineIsSubmitting, 
       selectedPlace: selectedPlace.name
