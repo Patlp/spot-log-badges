@@ -47,12 +47,6 @@ export const useCheckIn = (props?: UseCheckInProps) => {
       } catch (badgeError) {
         // Log badge error but don't fail the check-in
         console.error("Error awarding badge (non-critical):", badgeError);
-        // Optional: Show a toast that badge awarding failed, but check-in succeeded
-        // toast({
-        //   title: "Check-in Successful",
-        //   description: "Your check-in was recorded, but we couldn't process badges at this time.",
-        //   variant: "warning"
-        // });
       }
 
       // Call the onSuccess callback if provided
