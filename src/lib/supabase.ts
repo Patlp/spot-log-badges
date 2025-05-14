@@ -402,3 +402,73 @@ export const saveVenue = async (venueData: {
     return false;
   }
 };
+
+// Function to award "first_visit" badge
+export const awardFirstVisitBadge = async (userId: string, venueName: string) => {
+  try {
+    console.log("Checking for first visit badge eligibility:", { userId, venueName });
+    
+    // Check if this is truly the first check-in at this venue for this user
+    const { count: visitCount, error: visitCountError } = await supabase
+      .from("check_ins")
+      .select("*", { count: 'exact', head: true })
+      .eq("user_id", userId)
+      .eq("venue_name", venueName);
+      
+    if (visitCountError) {
+      console.error("Error checking visit count:", visitCountError);
+      return false;
+    }
+
+    // If this is not the first visit (count > 1), don't award badge
+    if (visitCount !== 1) {
+      console.log("Not first visit to this venue, badge not awarded", { visitCount });
+      return false;
+    }
+    
+    // Check if badge already exists for this venue and user to avoid duplicates
+    const { count: badgeExists, error: badgeCheckError } = await supabase
+      .from("badges")
+      .select("*", { count: 'exact', head: true })
+      .eq("user_id", userId)
+      .eq("venue_name", venueName)
+      .eq("badge_type", "first_visit");
+      
+    if (badgeCheckError) {
+      console.error("Error checking existing badge:", badgeCheckError);
+      return false;
+    }
+    
+    // If badge already exists, don't create a duplicate
+    if (badgeExists > 0) {
+      console.log("Badge already exists, not creating duplicate");
+      return false;
+    }
+    
+    // Create the badge
+    const badgeData = {
+      user_id: userId,
+      venue_name: venueName,
+      badge_type: "first_visit",
+      earned_at: new Date().toISOString(),
+      icon: "map-pin"
+    };
+    
+    console.log("Creating first visit badge:", badgeData);
+    
+    const { error: insertError } = await supabase
+      .from("badges")
+      .insert([badgeData]);
+      
+    if (insertError) {
+      console.error("Error creating badge:", insertError);
+      return false;
+    }
+    
+    console.log("First visit badge awarded successfully!");
+    return true;
+  } catch (error) {
+    console.error("Error awarding first visit badge:", error);
+    return false;
+  }
+};

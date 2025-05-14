@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { awardFirstVisitBadge } from "@/lib/supabase";
 
 type UseCheckInProps = {
   onSuccess?: () => void;
@@ -23,6 +24,23 @@ export const useCheckIn = (props?: UseCheckInProps) => {
       if (error) {
         console.error("Insert error:", error);
         throw new Error(error.message);
+      }
+
+      // Award first visit badge if this is the user's first visit to this venue
+      if (data && data[0]) {
+        console.log("Attempting to award first visit badge");
+        const badgeAwarded = await awardFirstVisitBadge(
+          checkInData.user_id, 
+          checkInData.venue_name
+        );
+        
+        if (badgeAwarded) {
+          toast({ 
+            title: "Badge Earned!", 
+            description: "You earned a First Visit badge for checking in here for the first time.",
+            variant: "default" 
+          });
+        }
       }
 
       // Call the onSuccess callback if provided
