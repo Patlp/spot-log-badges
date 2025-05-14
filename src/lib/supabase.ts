@@ -194,18 +194,20 @@ export const getAllCheckIns = async (limit = 10) => {
   }
 };
 
-// Function to get leaderboard
-export const getLeaderboard = async () => {
+// Function to get accurate leaderboard data
+export const getAccurateLeaderboard = async () => {
   try {
+    // This query fetches directly from the profiles table which already
+    // has the correct counts maintained by our database triggers
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .order("total_check_ins", { ascending: false });
+      .order("unique_venues", { ascending: false });
 
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error("Error getting leaderboard:", error);
+    console.error("Error getting accurate leaderboard data:", error);
     throw error;
   }
 };

@@ -1,11 +1,9 @@
 
-// Only modifying the necessary part of LeaderboardPage to ensure avatars display correctly
-
 import { useContext, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../App";
 import { useQuery } from "@tanstack/react-query";
-import { getLeaderboard } from "../lib/supabase";
+import { getAccurateLeaderboard } from "../lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +13,10 @@ import { Trophy, MapPin, Award } from "lucide-react";
 const LeaderboardPage = () => {
   const { user } = useContext(AuthContext);
 
+  // Use the new getAccurateLeaderboard function for consistent data
   const { data: leaderboard, isLoading, refetch: refetchLeaderboard } = useQuery({
-    queryKey: ["leaderboard"],
-    queryFn: getLeaderboard,
+    queryKey: ["accurate-leaderboard"],
+    queryFn: getAccurateLeaderboard,
   });
 
   // Refresh leaderboard when focused to ensure we have the latest avatar updates
@@ -82,7 +81,7 @@ const LeaderboardPage = () => {
             Top Explorers
           </CardTitle>
           <CardDescription className="text-center">
-            Ranked by total check-ins
+            Ranked by unique places visited
           </CardDescription>
         </CardHeader>
 
